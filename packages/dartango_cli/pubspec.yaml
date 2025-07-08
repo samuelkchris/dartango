@@ -1,0 +1,23 @@
+name: dartango_cli
+description: Command-line interface for Dartango framework
+version: 0.0.1
+homepage: https://github.com/yourusername/dartango
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  dartango:
+    path: ../dartango
+  args: ^2.4.0
+  path: ^1.8.0
+  io: ^1.0.0
+  cli_util: ^0.4.0
+  mason: ^0.1.0-dev
+
+dev_dependencies:
+  test: ^1.24.0
+  lints: ^3.0.0
+
+executables:
+  dartango: dartango

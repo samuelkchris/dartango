@@ -1,0 +1,71 @@
+name: dartango
+repository: https://github.com/yourusername/dartango
+
+packages:
+  - packages/**
+  - examples/**
+
+scripts:
+  # Analyze all packages
+  analyze:
+    run: dart analyze
+    exec:
+      concurrency: 1
+
+  # Run tests for all packages
+  test:
+    run: dart test
+    exec:
+      concurrency: 1
+      failFast: true
+    packageFilters:
+      dirExists: test
+
+  # Format all packages
+  format:
+    run: dart format .
+    exec:
+      concurrency: 1
+
+  # Generate code for all packages that need it
+  generate:
+    run: dart run build_runner build --delete-conflicting-outputs
+    exec:
+      concurrency: 1
+    packageFilters:
+      dependsOn: build_runner
+
+  # Run the example server
+  run:example:
+    run: dart run bin/server.dart
+    exec:
+      scope: dartango_example
+
+  # Run the CLI
+  cli:
+    run: dart run bin/dartango.dart
+    exec:
+      scope: dartango_cli
+
+  # Serve the admin dashboard
+  admin:serve:
+    run: flutter run -d chrome
+    exec:
+      scope: dartango_admin
+
+  # Build admin dashboard
+  admin:build:
+    run: flutter build web
+    exec:
+      scope: dartango_admin
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.0.0'
+
+command:
+  version:
+    workspaceChangelog: false
+
+  bootstrap:
+    runPubGetInParallel: true

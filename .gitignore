@@ -1,0 +1,37 @@
+# Dart/Flutter
+.dart_tool/
+.packages
+.pub/
+build/
+pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Melos
+.melos/
+
+# Coverage
+coverage/
+*.lcov
+
+# Logs
+*.log
+
+# Example app
+examples/*/db.sqlite
+examples/*/media/
+examples/*/static_collected/
+
+# Project exclude paths
+/packages/dartango_admin/macos/Flutter/
