@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:test/test.dart';
 import 'package:dartango/src/core/http/response.dart';
 
@@ -100,7 +99,8 @@ void main() {
 
       expect(response.statusCode, equals(200));
       expect(response.body, equals(json.encode(data)));
-      expect(response.headers['Content-Type'], equals('application/json; charset=utf-8'));
+      expect(response.headers['Content-Type'],
+          equals('application/json; charset=utf-8'));
     });
 
     test('should create JSON response with custom encoder', () {
@@ -109,7 +109,8 @@ void main() {
 
       expect(response.statusCode, equals(200));
       expect(response.body, equals(JsonEncoder.withIndent('  ').convert(data)));
-      expect(response.headers['Content-Type'], equals('application/json; charset=utf-8'));
+      expect(response.headers['Content-Type'],
+          equals('application/json; charset=utf-8'));
     });
 
     test('should create HTML response', () {
@@ -118,7 +119,8 @@ void main() {
 
       expect(response.statusCode, equals(200));
       expect(response.body, equals(html));
-      expect(response.headers['Content-Type'], equals('text/html; charset=utf-8'));
+      expect(
+          response.headers['Content-Type'], equals('text/html; charset=utf-8'));
     });
 
     test('should create text response', () {
@@ -127,7 +129,8 @@ void main() {
 
       expect(response.statusCode, equals(200));
       expect(response.body, equals(text));
-      expect(response.headers['Content-Type'], equals('text/plain; charset=utf-8'));
+      expect(response.headers['Content-Type'],
+          equals('text/plain; charset=utf-8'));
     });
 
     test('should create XML response', () {
@@ -136,7 +139,8 @@ void main() {
 
       expect(response.statusCode, equals(200));
       expect(response.body, equals(xml));
-      expect(response.headers['Content-Type'], equals('application/xml; charset=utf-8'));
+      expect(response.headers['Content-Type'],
+          equals('application/xml; charset=utf-8'));
     });
 
     test('should create redirect response', () {
@@ -161,26 +165,26 @@ void main() {
     });
 
     test('should set header', () {
-      final response = HttpResponse('test')
-          .setHeader('X-Custom-Header', 'custom-value');
+      final response =
+          HttpResponse('test').setHeader('X-Custom-Header', 'custom-value');
 
       expect(response.headers['X-Custom-Header'], equals('custom-value'));
     });
 
     test('should set multiple headers', () {
-      final response = HttpResponse('test')
-          .setHeaders({
-            'X-Custom-Header': 'custom-value',
-            'X-Another-Header': 'another-value',
-          });
+      final response = HttpResponse('test').setHeaders({
+        'X-Custom-Header': 'custom-value',
+        'X-Another-Header': 'another-value',
+      });
 
       expect(response.headers['X-Custom-Header'], equals('custom-value'));
       expect(response.headers['X-Another-Header'], equals('another-value'));
     });
 
     test('should remove header', () {
-      final response = HttpResponse('test', headers: {'X-Custom-Header': 'value'})
-          .removeHeader('X-Custom-Header');
+      final response =
+          HttpResponse('test', headers: {'X-Custom-Header': 'value'})
+              .removeHeader('X-Custom-Header');
 
       expect(response.headers.containsKey('X-Custom-Header'), isFalse);
     });
@@ -195,8 +199,7 @@ void main() {
     });
 
     test('should delete cookie', () {
-      final response = HttpResponse('test')
-          .deleteCookie('session', path: '/');
+      final response = HttpResponse('test').deleteCookie('session', path: '/');
 
       expect(response.headers['Set-Cookie'], contains('session='));
       expect(response.headers['Set-Cookie'], contains('Path=/'));
@@ -204,46 +207,45 @@ void main() {
     });
 
     test('should set cache headers', () {
-      final response = HttpResponse('test')
-          .cache(maxAge: Duration(hours: 1), private: true);
+      final response =
+          HttpResponse('test').cache(maxAge: Duration(hours: 1), private: true);
 
       expect(response.headers['Cache-Control'], contains('max-age=3600'));
       expect(response.headers['Cache-Control'], contains('private'));
     });
 
     test('should set ETag header', () {
-      final response = HttpResponse('test')
-          .etag('abc123');
+      final response = HttpResponse('test').etag('abc123');
 
       expect(response.headers['ETag'], equals('"abc123"'));
     });
 
     test('should set Last-Modified header', () {
       final dateTime = DateTime.utc(2023, 1, 1, 12, 0, 0);
-      final response = HttpResponse('test')
-          .lastModified(dateTime);
+      final response = HttpResponse('test').lastModified(dateTime);
 
       expect(response.headers['Last-Modified'], isNotNull);
     });
 
     test('should set Vary header', () {
-      final response = HttpResponse('test')
-          .vary(['Accept', 'Accept-Language']);
+      final response = HttpResponse('test').vary(['Accept', 'Accept-Language']);
 
       expect(response.headers['Vary'], equals('Accept, Accept-Language'));
     });
 
     test('should set CORS headers', () {
-      final response = HttpResponse('test')
-          .cors(
-            allowOrigins: ['https://example.com'],
-            allowMethods: ['GET', 'POST'],
-            allowCredentials: true,
-          );
+      final response = HttpResponse('test').cors(
+        allowOrigins: ['https://example.com'],
+        allowMethods: ['GET', 'POST'],
+        allowCredentials: true,
+      );
 
-      expect(response.headers['Access-Control-Allow-Origin'], equals('https://example.com'));
-      expect(response.headers['Access-Control-Allow-Methods'], equals('GET, POST'));
-      expect(response.headers['Access-Control-Allow-Credentials'], equals('true'));
+      expect(response.headers['Access-Control-Allow-Origin'],
+          equals('https://example.com'));
+      expect(response.headers['Access-Control-Allow-Methods'],
+          equals('GET, POST'));
+      expect(
+          response.headers['Access-Control-Allow-Credentials'], equals('true'));
     });
 
     test('should convert to map', () {
@@ -277,7 +279,8 @@ void main() {
 
       expect(response.statusCode, equals(200));
       expect(response.body, equals(json.encode(data)));
-      expect(response.headers['Content-Type'], equals('application/json; charset=utf-8'));
+      expect(response.headers['Content-Type'],
+          equals('application/json; charset=utf-8'));
     });
 
     test('should create JSON response with custom status', () {
@@ -297,7 +300,8 @@ void main() {
       expect(response.statusCode, equals(200));
       expect(response.templateName, equals('user.html'));
       expect(response.context, equals(context));
-      expect(response.headers['Content-Type'], equals('text/html; charset=utf-8'));
+      expect(
+          response.headers['Content-Type'], equals('text/html; charset=utf-8'));
     });
 
     test('should create template response with custom status', () {
@@ -328,18 +332,18 @@ void main() {
 
     test('should write data to stream', () {
       final response = StreamingHttpResponse();
-      
+
       response.write('Hello, ');
       response.write('World!');
-      
+
       expect(response.statusCode, equals(200));
     });
 
     test('should write bytes to stream', () {
       final response = StreamingHttpResponse();
-      
+
       response.writeBytes(utf8.encode('Hello, World!'));
-      
+
       expect(response.statusCode, equals(200));
     });
   });

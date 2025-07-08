@@ -4,11 +4,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:shelf/shelf.dart' as shelf;
-import 'package:crypto/crypto.dart';
-
-import '../exceptions/http.dart';
-import '../utils/encoding.dart';
-import '../utils/http.dart';
 
 class HttpResponse {
   final int statusCode;
@@ -136,7 +131,11 @@ class HttpResponse {
     JsonEncoder? encoder,
     bool? indent,
   }) : this(
-          (encoder ?? (indent == true ? JsonEncoder.withIndent('  ') : JsonEncoder())).convert(data),
+          (encoder ??
+                  (indent == true
+                      ? JsonEncoder.withIndent('  ')
+                      : JsonEncoder()))
+              .convert(data),
           statusCode: statusCode,
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
@@ -183,7 +182,8 @@ class HttpResponse {
           xml,
           statusCode: statusCode,
           headers: {
-            'Content-Type': 'application/xml; charset=${(encoding ?? utf8).name}',
+            'Content-Type':
+                'application/xml; charset=${(encoding ?? utf8).name}',
             ...?headers,
           },
           encoding: encoding ?? utf8,
@@ -223,7 +223,9 @@ class HttpResponse {
           statusCode: statusCode,
           headers: {
             'Content-Type': contentType ?? _getMimeType(file.path),
-            if (attachment == true) 'Content-Disposition': 'attachment${filename != null ? '; filename="$filename"' : ''}',
+            if (attachment == true)
+              'Content-Disposition':
+                  'attachment${filename != null ? '; filename="$filename"' : ''}',
             'Content-Length': file.lengthSync().toString(),
             ...?headers,
           },
@@ -240,7 +242,8 @@ class HttpResponse {
           statusCode: statusCode,
           headers: {
             'Content-Type': contentType ?? 'application/octet-stream',
-            if (contentLength != null) 'Content-Length': contentLength.toString(),
+            if (contentLength != null)
+              'Content-Length': contentLength.toString(),
             ...?headers,
           },
           streaming: true,
@@ -360,7 +363,7 @@ class HttpResponse {
     Duration? sMaxAge,
   }) {
     final directives = <String>[];
-    
+
     if (maxAge != null) directives.add('max-age=${maxAge.inSeconds}');
     if (private == true) directives.add('private');
     if (noCache == true) directives.add('no-cache');
@@ -400,7 +403,7 @@ class HttpResponse {
     int? maxAge,
   }) {
     final corsHeaders = <String, String>{};
-    
+
     if (allowOrigins != null) {
       corsHeaders['Access-Control-Allow-Origin'] = allowOrigins.join(', ');
     }

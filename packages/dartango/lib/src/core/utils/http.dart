@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 
 class HttpUtils {
@@ -72,11 +71,16 @@ class HttpUtils {
     return statusMessages[statusCode] ?? 'Unknown Status';
   }
 
-  static bool isInformational(int statusCode) => statusCode >= 100 && statusCode < 200;
-  static bool isSuccessful(int statusCode) => statusCode >= 200 && statusCode < 300;
-  static bool isRedirection(int statusCode) => statusCode >= 300 && statusCode < 400;
-  static bool isClientError(int statusCode) => statusCode >= 400 && statusCode < 500;
-  static bool isServerError(int statusCode) => statusCode >= 500 && statusCode < 600;
+  static bool isInformational(int statusCode) =>
+      statusCode >= 100 && statusCode < 200;
+  static bool isSuccessful(int statusCode) =>
+      statusCode >= 200 && statusCode < 300;
+  static bool isRedirection(int statusCode) =>
+      statusCode >= 300 && statusCode < 400;
+  static bool isClientError(int statusCode) =>
+      statusCode >= 400 && statusCode < 500;
+  static bool isServerError(int statusCode) =>
+      statusCode >= 500 && statusCode < 600;
 
   static String formatHttpDate(DateTime dateTime) {
     return dateTime.toUtc().toString().replaceAll(RegExp(r'\.\d{3}Z$'), ' GMT');
@@ -103,12 +107,25 @@ class HttpUtils {
   }
 
   static bool isValidHttpMethod(String method) {
-    const validMethods = {'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT'};
+    const validMethods = {
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+      'PATCH',
+      'HEAD',
+      'OPTIONS',
+      'TRACE',
+      'CONNECT'
+    };
     return validMethods.contains(method.toUpperCase());
   }
 
   static bool isValidHttpVersion(String version) {
-    return version == '1.0' || version == '1.1' || version == '2.0' || version == '3.0';
+    return version == '1.0' ||
+        version == '1.1' ||
+        version == '2.0' ||
+        version == '3.0';
   }
 
   static String normalizeHeaderName(String name) {
@@ -121,87 +138,89 @@ class HttpUtils {
 
   static Map<String, String> parseAcceptHeader(String? acceptHeader) {
     if (acceptHeader == null) return {};
-    
+
     final result = <String, String>{};
     final parts = acceptHeader.split(',');
-    
+
     for (final part in parts) {
       final trimmed = part.trim();
       final semicolonIndex = trimmed.indexOf(';');
-      
+
       if (semicolonIndex == -1) {
         result[trimmed] = '1.0';
       } else {
         final mediaType = trimmed.substring(0, semicolonIndex);
         final params = trimmed.substring(semicolonIndex + 1);
-        
+
         final qMatch = RegExp(r'q=([0-9.]+)').firstMatch(params);
         final quality = qMatch?.group(1) ?? '1.0';
-        
+
         result[mediaType] = quality;
       }
     }
-    
+
     return result;
   }
 
   static List<String> parseAcceptLanguageHeader(String? acceptLanguageHeader) {
     if (acceptLanguageHeader == null) return [];
-    
+
     final languages = <String>[];
     final parts = acceptLanguageHeader.split(',');
-    
+
     for (final part in parts) {
       final trimmed = part.trim();
       final semicolonIndex = trimmed.indexOf(';');
-      
+
       if (semicolonIndex == -1) {
         languages.add(trimmed);
       } else {
         languages.add(trimmed.substring(0, semicolonIndex));
       }
     }
-    
+
     return languages;
   }
 
   static Map<String, String> parseContentTypeHeader(String? contentTypeHeader) {
     if (contentTypeHeader == null) return {};
-    
+
     final result = <String, String>{};
     final parts = contentTypeHeader.split(';');
-    
+
     if (parts.isNotEmpty) {
       result['type'] = parts.first.trim();
-      
+
       for (int i = 1; i < parts.length; i++) {
         final param = parts[i].trim();
         final equalIndex = param.indexOf('=');
-        
+
         if (equalIndex != -1) {
           final key = param.substring(0, equalIndex).trim();
-          final value = param.substring(equalIndex + 1).trim().replaceAll('"', '');
+          final value =
+              param.substring(equalIndex + 1).trim().replaceAll('"', '');
           result[key] = value;
         }
       }
     }
-    
+
     return result;
   }
 
-  static String buildContentTypeHeader(String type, {String? charset, Map<String, String>? parameters}) {
+  static String buildContentTypeHeader(String type,
+      {String? charset, Map<String, String>? parameters}) {
     final parts = [type];
-    
+
     if (charset != null) {
       parts.add('charset=$charset');
     }
-    
+
     if (parameters != null) {
       for (final entry in parameters.entries) {
         parts.add('${entry.key}=${entry.value}');
       }
     }
-    
+
     return parts.join('; ');
   }
 
@@ -212,7 +231,9 @@ class HttpUtils {
 
   static bool isFormContentType(String? contentType) {
     if (contentType == null) return false;
-    return contentType.toLowerCase().contains('application/x-www-form-urlencoded');
+    return contentType
+        .toLowerCase()
+        .contains('application/x-www-form-urlencoded');
   }
 
   static bool isMultipartContentType(String? contentType) {
@@ -250,7 +271,8 @@ class HttpUtils {
   static String formatByteSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (bytes < 1024 * 1024 * 1024)
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
@@ -277,18 +299,18 @@ class HttpUtils {
       final baseUri = Uri.parse(base);
       return '${baseUri.scheme}://${baseUri.authority}$path';
     }
-    
+
     if (base.endsWith('/')) {
       return base + path;
     }
-    
+
     return '$base/$path';
   }
 
   static Map<String, String> parseQueryString(String queryString) {
     final result = <String, String>{};
     if (queryString.isEmpty) return result;
-    
+
     final pairs = queryString.split('&');
     for (final pair in pairs) {
       final equalIndex = pair.indexOf('=');
@@ -300,19 +322,19 @@ class HttpUtils {
         result[key] = value;
       }
     }
-    
+
     return result;
   }
 
   static String buildQueryString(Map<String, dynamic> params) {
     final pairs = <String>[];
-    
+
     for (final entry in params.entries) {
       final key = Uri.encodeQueryComponent(entry.key);
       final value = Uri.encodeQueryComponent(entry.value.toString());
       pairs.add('$key=$value');
     }
-    
+
     return pairs.join('&');
   }
 
@@ -323,7 +345,11 @@ class HttpUtils {
 
   static List<String> parseHeaderList(String? headerValue) {
     if (headerValue == null) return [];
-    return headerValue.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    return headerValue
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 
   static String generateBoundary() {
@@ -413,29 +439,30 @@ class HttpUtils {
     return port >= 1 && port <= 65535;
   }
 
-  static String buildFullUrl(String scheme, String host, int port, String path, {String? query, String? fragment}) {
+  static String buildFullUrl(String scheme, String host, int port, String path,
+      {String? query, String? fragment}) {
     final buffer = StringBuffer();
     buffer.write(scheme);
     buffer.write('://');
     buffer.write(host);
-    
+
     if (port != getDefaultPort(scheme)) {
       buffer.write(':');
       buffer.write(port);
     }
-    
+
     buffer.write(path);
-    
+
     if (query != null && query.isNotEmpty) {
       buffer.write('?');
       buffer.write(query);
     }
-    
+
     if (fragment != null && fragment.isNotEmpty) {
       buffer.write('#');
       buffer.write(fragment);
     }
-    
+
     return buffer.toString();
   }
 }

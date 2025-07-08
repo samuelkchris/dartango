@@ -4,20 +4,14 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:shelf/shelf.dart' as shelf;
-import 'package:crypto/crypto.dart';
-import 'package:collection/collection.dart';
 
-import '../exceptions/base.dart';
 import '../exceptions/http.dart';
-import '../utils/encoding.dart';
-import '../utils/http.dart';
-import '../settings/global.dart';
 
 class HttpRequest {
   final shelf.Request _shelfRequest;
   final Map<String, dynamic> _middlewareState = {};
   final Map<String, dynamic> _meta = {};
-  
+
   String? _bodyString;
   Map<String, dynamic>? _parsedBody;
   Map<String, List<String>>? _parsedQueryParams;
@@ -25,7 +19,7 @@ class HttpRequest {
   bool _bodyParsed = false;
   bool _queryParamsParsed = false;
   bool _cookiesParsed = false;
-  
+
   HttpRequest(this._shelfRequest);
 
   String get method => _shelfRequest.method;
@@ -38,7 +32,7 @@ class HttpRequest {
   String get host => uri.host;
   int get port => uri.port;
   String get hostWithPort => uri.hasPort ? '$host:$port' : host;
-  
+
   Map<String, String> get headers => _shelfRequest.headers;
   Map<String, dynamic> get meta => _meta;
   Map<String, dynamic> get middlewareState => _middlewareState;
@@ -81,7 +75,8 @@ class HttpRequest {
   String get serverName => xForwardedHost ?? host;
   int get serverPort => port;
 
-  bool get isAjax => getHeader('x-requested-with')?.toLowerCase() == 'xmlhttprequest';
+  bool get isAjax =>
+      getHeader('x-requested-with')?.toLowerCase() == 'xmlhttprequest';
   bool get isPost => method == 'POST';
   bool get isGet => method == 'GET';
   bool get isPut => method == 'PUT';
@@ -100,7 +95,8 @@ class HttpRequest {
           final equalIndex = pair.indexOf('=');
           if (equalIndex != -1) {
             final key = Uri.decodeQueryComponent(pair.substring(0, equalIndex));
-            final value = Uri.decodeQueryComponent(pair.substring(equalIndex + 1));
+            final value =
+                Uri.decodeQueryComponent(pair.substring(equalIndex + 1));
             if (_parsedQueryParams!.containsKey(key)) {
               _parsedQueryParams![key]!.add(value);
             } else {
@@ -148,7 +144,8 @@ class HttpRequest {
 
   Future<String> get body async {
     if (_bodyString == null) {
-      final bytes = await _shelfRequest.read().expand((chunk) => chunk).toList();
+      final bytes =
+          await _shelfRequest.read().expand((chunk) => chunk).toList();
       _bodyString = utf8.decode(bytes);
     }
     return _bodyString!;
@@ -163,7 +160,7 @@ class HttpRequest {
     if (!_bodyParsed) {
       _parsedBody = {};
       final bodyStr = await body;
-      
+
       if (bodyStr.isEmpty) {
         _parsedBody = {};
       } else if (contentType?.startsWith('application/json') == true) {
@@ -172,7 +169,8 @@ class HttpRequest {
         } catch (e) {
           throw BadRequestException('Invalid JSON in request body');
         }
-      } else if (contentType?.startsWith('application/x-www-form-urlencoded') == true) {
+      } else if (contentType?.startsWith('application/x-www-form-urlencoded') ==
+          true) {
         _parsedBody = <String, dynamic>{};
         final params = Uri.splitQueryString(bodyStr);
         params.forEach((key, value) {
@@ -192,7 +190,8 @@ class HttpRequest {
     final contentTypeHeader = contentType!;
     final boundary = _extractBoundary(contentTypeHeader);
     if (boundary == null) {
-      throw BadRequestException('Invalid multipart form data: missing boundary');
+      throw BadRequestException(
+          'Invalid multipart form data: missing boundary');
     }
 
     final parts = body.split('--$boundary');
@@ -216,8 +215,9 @@ class HttpRequest {
       if (nameMatch == null) continue;
 
       final name = nameMatch.group(1)!;
-      final filenameMatch = RegExp(r'filename="([^"]*)"').firstMatch(dispositionLine);
-      
+      final filenameMatch =
+          RegExp(r'filename="([^"]*)"').firstMatch(dispositionLine);
+
       final contentStart = lines.indexWhere((line) => line.isEmpty) + 1;
       if (contentStart >= lines.length) continue;
 
@@ -314,7 +314,7 @@ class HttpFile {
 
   int get size => content.length;
   String get extension => name.split('.').last;
-  
+
   Future<void> saveTo(String path) async {
     final file = File(path);
     await file.writeAsBytes(content);

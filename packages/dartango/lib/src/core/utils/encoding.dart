@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 class EncodingUtils {
   static const utf8 = Utf8Codec();
@@ -8,13 +7,13 @@ class EncodingUtils {
 
   static String detectEncoding(List<int> bytes) {
     if (bytes.isEmpty) return 'utf-8';
-    
+
     if (bytes.length >= 3) {
       if (bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
         return 'utf-8';
       }
     }
-    
+
     if (bytes.length >= 2) {
       if (bytes[0] == 0xFE && bytes[1] == 0xFF) {
         return 'utf-16be';
@@ -23,16 +22,22 @@ class EncodingUtils {
         return 'utf-16le';
       }
     }
-    
+
     if (bytes.length >= 4) {
-      if (bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0xFE && bytes[3] == 0xFF) {
+      if (bytes[0] == 0x00 &&
+          bytes[1] == 0x00 &&
+          bytes[2] == 0xFE &&
+          bytes[3] == 0xFF) {
         return 'utf-32be';
       }
-      if (bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0x00 && bytes[3] == 0x00) {
+      if (bytes[0] == 0xFF &&
+          bytes[1] == 0xFE &&
+          bytes[2] == 0x00 &&
+          bytes[3] == 0x00) {
         return 'utf-32le';
       }
     }
-    
+
     try {
       utf8.decode(bytes);
       return 'utf-8';
@@ -43,7 +48,7 @@ class EncodingUtils {
 
   static String safeDecodeString(List<int> bytes, {String? encoding}) {
     encoding ??= detectEncoding(bytes);
-    
+
     try {
       switch (encoding.toLowerCase()) {
         case 'utf-8':
@@ -164,12 +169,14 @@ class EncodingUtils {
     return text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
   }
 
-  static String truncateString(String text, int maxLength, {String suffix = '...'}) {
+  static String truncateString(String text, int maxLength,
+      {String suffix = '...'}) {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength - suffix.length) + suffix;
   }
 
-  static String truncateWords(String text, int maxWords, {String suffix = '...'}) {
+  static String truncateWords(String text, int maxWords,
+      {String suffix = '...'}) {
     final words = text.split(' ');
     if (words.length <= maxWords) return text;
     return '${words.take(maxWords).join(' ')}$suffix';
@@ -228,7 +235,8 @@ class EncodingUtils {
 
   static String snakeCase(String text) {
     return text
-        .replaceAllMapped(RegExp(r'[A-Z]'), (match) => '_${match.group(0)!.toLowerCase()}')
+        .replaceAllMapped(
+            RegExp(r'[A-Z]'), (match) => '_${match.group(0)!.toLowerCase()}')
         .replaceAll(RegExp(r'[_\s-]+'), '_')
         .replaceAll(RegExp(r'^_|_$'), '')
         .toLowerCase();
@@ -236,7 +244,8 @@ class EncodingUtils {
 
   static String kebabCase(String text) {
     return text
-        .replaceAllMapped(RegExp(r'[A-Z]'), (match) => '-${match.group(0)!.toLowerCase()}')
+        .replaceAllMapped(
+            RegExp(r'[A-Z]'), (match) => '-${match.group(0)!.toLowerCase()}')
         .replaceAll(RegExp(r'[_\s-]+'), '-')
         .replaceAll(RegExp(r'^-|-$'), '')
         .toLowerCase();

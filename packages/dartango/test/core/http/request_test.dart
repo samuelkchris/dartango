@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:test/test.dart';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:dartango/src/core/http/request.dart';
@@ -8,7 +7,8 @@ import 'package:dartango/src/core/exceptions/http.dart';
 void main() {
   group('HttpRequest', () {
     test('should parse basic GET request', () {
-      final shelfRequest = shelf.Request('GET', Uri.parse('http://localhost:8000/test?param=value'));
+      final shelfRequest = shelf.Request(
+          'GET', Uri.parse('http://localhost:8000/test?param=value'));
       final request = HttpRequest(shelfRequest);
 
       expect(request.method, equals('GET'));
@@ -23,7 +23,8 @@ void main() {
     });
 
     test('should parse HTTPS request', () {
-      final shelfRequest = shelf.Request('GET', Uri.parse('https://example.com/secure'));
+      final shelfRequest =
+          shelf.Request('GET', Uri.parse('https://example.com/secure'));
       final request = HttpRequest(shelfRequest);
 
       expect(request.scheme, equals('https'));
@@ -31,7 +32,10 @@ void main() {
     });
 
     test('should parse query parameters', () {
-      final shelfRequest = shelf.Request('GET', Uri.parse('http://localhost/test?name=John&age=30&tags=dart&tags=web'));
+      final shelfRequest = shelf.Request(
+          'GET',
+          Uri.parse(
+              'http://localhost/test?name=John&age=30&tags=dart&tags=web'));
       final request = HttpRequest(shelfRequest);
 
       expect(request.getQueryParam('name'), equals('John'));
@@ -177,7 +181,8 @@ void main() {
     });
 
     test('should support copyWith', () {
-      final shelfRequest = shelf.Request('GET', Uri.parse('http://localhost/test'));
+      final shelfRequest =
+          shelf.Request('GET', Uri.parse('http://localhost/test'));
       final request = HttpRequest(shelfRequest);
 
       final copy = request.copyWith(
@@ -214,19 +219,30 @@ void main() {
     });
 
     test('should provide string representation', () {
-      final shelfRequest = shelf.Request('GET', Uri.parse('http://localhost/test'));
+      final shelfRequest =
+          shelf.Request('GET', Uri.parse('http://localhost/test'));
       final request = HttpRequest(shelfRequest);
 
       expect(request.toString(), equals('GET /test'));
     });
 
     test('should handle HTTP methods correctly', () {
-      final methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE'];
-      
+      final methods = [
+        'GET',
+        'POST',
+        'PUT',
+        'DELETE',
+        'PATCH',
+        'HEAD',
+        'OPTIONS',
+        'TRACE'
+      ];
+
       for (final method in methods) {
-        final shelfRequest = shelf.Request(method, Uri.parse('http://localhost/test'));
+        final shelfRequest =
+            shelf.Request(method, Uri.parse('http://localhost/test'));
         final request = HttpRequest(shelfRequest);
-        
+
         expect(request.method, equals(method));
         expect(request.isGet, equals(method == 'GET'));
         expect(request.isPost, equals(method == 'POST'));
@@ -265,7 +281,8 @@ void main() {
         content: content,
       );
 
-      expect(file.toString(), equals('HttpFile(test.txt, text/plain, ${content.length}bytes)'));
+      expect(file.toString(),
+          equals('HttpFile(test.txt, text/plain, ${content.length}bytes)'));
     });
   });
 }

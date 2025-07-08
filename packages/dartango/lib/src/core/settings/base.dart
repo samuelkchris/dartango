@@ -1,10 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:logging/logging.dart';
 
 abstract class BaseSettings {
-  static final Logger _logger = Logger('BaseSettings');
-  
   T getSetting<T>(String key, [T? defaultValue]);
   void setSetting<T>(String key, T value);
   bool hasSetting(String key);
@@ -18,7 +15,7 @@ class Settings extends BaseSettings {
   final Map<String, dynamic> _settings = {};
   final Map<String, dynamic> _defaults = {};
   final Map<String, String> _environment = {};
-  
+
   Settings([Map<String, dynamic>? settings]) {
     if (settings != null) {
       _settings.addAll(settings);
@@ -132,7 +129,8 @@ class Settings extends BaseSettings {
         'disable_existing_loggers': false,
         'formatters': {
           'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'format':
+                '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
           },
           'simple': {
@@ -205,20 +203,20 @@ class Settings extends BaseSettings {
     if (_settings.containsKey(key)) {
       return _settings[key] as T;
     }
-    
+
     final envKey = key.toUpperCase();
     if (_environment.containsKey(envKey)) {
       return _parseEnvironmentValue<T>(_environment[envKey]!, defaultValue);
     }
-    
+
     if (_defaults.containsKey(key)) {
       return _defaults[key] as T;
     }
-    
+
     if (defaultValue != null) {
       return defaultValue;
     }
-    
+
     throw Exception('Setting $key not found and no default value provided');
   }
 
@@ -234,7 +232,11 @@ class Settings extends BaseSettings {
         case String:
           return value as T;
         case const (List<String>):
-          return value.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList() as T;
+          return value
+              .split(',')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList() as T;
         default:
           if (value.startsWith('{') || value.startsWith('[')) {
             return json.decode(value) as T;
@@ -254,9 +256,9 @@ class Settings extends BaseSettings {
 
   @override
   bool hasSetting(String key) {
-    return _settings.containsKey(key) || 
-           _environment.containsKey(key.toUpperCase()) || 
-           _defaults.containsKey(key);
+    return _settings.containsKey(key) ||
+        _environment.containsKey(key.toUpperCase()) ||
+        _defaults.containsKey(key);
   }
 
   @override
@@ -269,14 +271,14 @@ class Settings extends BaseSettings {
     final result = <String, dynamic>{};
     result.addAll(_defaults);
     result.addAll(_settings);
-    
+
     for (final entry in _environment.entries) {
       final key = entry.key.toLowerCase();
       if (_defaults.containsKey(key) || _settings.containsKey(key)) {
         result[key] = entry.value;
       }
     }
-    
+
     return result;
   }
 
@@ -303,7 +305,8 @@ class Settings extends BaseSettings {
     _settings.remove(key);
   }
 
-  List<String> get keys => [..._defaults.keys, ..._settings.keys].toSet().toList();
+  List<String> get keys =>
+      [..._defaults.keys, ..._settings.keys].toSet().toList();
 
   bool get debug => getSetting<bool>('DEBUG', false);
   set debug(bool value) => setSetting('DEBUG', value);
@@ -311,7 +314,8 @@ class Settings extends BaseSettings {
   String get secretKey => getSetting<String>('SECRET_KEY', '');
   set secretKey(String value) => setSetting('SECRET_KEY', value);
 
-  List<String> get allowedHosts => getSetting<List<String>>('ALLOWED_HOSTS', ['*']);
+  List<String> get allowedHosts =>
+      getSetting<List<String>>('ALLOWED_HOSTS', ['*']);
   set allowedHosts(List<String> value) => setSetting('ALLOWED_HOSTS', value);
 
   String get timeZone => getSetting<String>('TIME_ZONE', 'UTC');
@@ -329,7 +333,8 @@ class Settings extends BaseSettings {
   bool get useTz => getSetting<bool>('USE_TZ', true);
   set useTz(bool value) => setSetting('USE_TZ', value);
 
-  List<String> get installedApps => getSetting<List<String>>('INSTALLED_APPS', []);
+  List<String> get installedApps =>
+      getSetting<List<String>>('INSTALLED_APPS', []);
   set installedApps(List<String> value) => setSetting('INSTALLED_APPS', value);
 
   List<String> get middleware => getSetting<List<String>>('MIDDLEWARE', []);
@@ -344,7 +349,8 @@ class Settings extends BaseSettings {
   String get asgiApplication => getSetting<String>('ASGI_APPLICATION', '');
   set asgiApplication(String value) => setSetting('ASGI_APPLICATION', value);
 
-  Map<String, dynamic> get databases => getSetting<Map<String, dynamic>>('DATABASES', {});
+  Map<String, dynamic> get databases =>
+      getSetting<Map<String, dynamic>>('DATABASES', {});
   set databases(Map<String, dynamic> value) => setSetting('DATABASES', value);
 
   String get mediaUrl => getSetting<String>('MEDIA_URL', '/media/');
@@ -359,16 +365,22 @@ class Settings extends BaseSettings {
   String get staticRoot => getSetting<String>('STATIC_ROOT', '');
   set staticRoot(String value) => setSetting('STATIC_ROOT', value);
 
-  List<String> get staticFilesDirs => getSetting<List<String>>('STATICFILES_DIRS', []);
-  set staticFilesDirs(List<String> value) => setSetting('STATICFILES_DIRS', value);
+  List<String> get staticFilesDirs =>
+      getSetting<List<String>>('STATICFILES_DIRS', []);
+  set staticFilesDirs(List<String> value) =>
+      setSetting('STATICFILES_DIRS', value);
 
-  List<Map<String, dynamic>> get templates => getSetting<List<Map<String, dynamic>>>('TEMPLATES', []);
-  set templates(List<Map<String, dynamic>> value) => setSetting('TEMPLATES', value);
+  List<Map<String, dynamic>> get templates =>
+      getSetting<List<Map<String, dynamic>>>('TEMPLATES', []);
+  set templates(List<Map<String, dynamic>> value) =>
+      setSetting('TEMPLATES', value);
 
-  String get defaultFromEmail => getSetting<String>('DEFAULT_FROM_EMAIL', 'webmaster@localhost');
+  String get defaultFromEmail =>
+      getSetting<String>('DEFAULT_FROM_EMAIL', 'webmaster@localhost');
   set defaultFromEmail(String value) => setSetting('DEFAULT_FROM_EMAIL', value);
 
-  String get serverEmail => getSetting<String>('SERVER_EMAIL', 'root@localhost');
+  String get serverEmail =>
+      getSetting<String>('SERVER_EMAIL', 'root@localhost');
   set serverEmail(String value) => setSetting('SERVER_EMAIL', value);
 
   String get emailHost => getSetting<String>('EMAIL_HOST', 'localhost');
@@ -381,7 +393,8 @@ class Settings extends BaseSettings {
   set emailHostUser(String value) => setSetting('EMAIL_HOST_USER', value);
 
   String get emailHostPassword => getSetting<String>('EMAIL_HOST_PASSWORD', '');
-  set emailHostPassword(String value) => setSetting('EMAIL_HOST_PASSWORD', value);
+  set emailHostPassword(String value) =>
+      setSetting('EMAIL_HOST_PASSWORD', value);
 
   bool get emailUseTls => getSetting<bool>('EMAIL_USE_TLS', false);
   set emailUseTls(bool value) => setSetting('EMAIL_USE_TLS', value);
