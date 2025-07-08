@@ -35,3 +35,7 @@ examples/*/static_collected/
 
 # Project exclude paths
 /packages/dartango_admin/macos/Flutter/
+
+# Development guidance files (never commit)
+CLAUDE.md
+docs/
