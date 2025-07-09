@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 abstract class Cache {
   Future<T?> get<T>(String key);

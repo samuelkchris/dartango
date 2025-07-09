@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:shelf/shelf.dart' as shelf;
+
 import '../http/request.dart';
 import '../http/response.dart';
+import '../middleware/base.dart';
 import '../middleware/session.dart';
 import '../sessions/sessions.dart';
 import '../urls/resolver.dart';
@@ -209,8 +212,8 @@ class TestClient {
     return requestHeaders;
   }
 
-  String? _prepareBody(dynamic data, String? contentType) {
-    if (data == null) return null;
+  String _prepareBody(dynamic data, String? contentType) {
+    if (data == null) return '';
     
     if (data is String) {
       return data;
@@ -245,8 +248,8 @@ class TestClient {
       final match = urlConfig.resolve(request.path);
       if (match == null) {
         response = HttpResponse(
+          'Not Found',
           statusCode: 404,
-          body: 'Not Found',
           headers: {'content-type': 'text/plain'},
         );
       } else {
@@ -254,8 +257,8 @@ class TestClient {
       }
     } catch (e) {
       response = HttpResponse(
+        'Internal Server Error: $e',
         statusCode: 500,
-        body: 'Internal Server Error: $e',
         headers: {'content-type': 'text/plain'},
       );
     }
@@ -275,19 +278,8 @@ class TestClient {
       }
     }
 
-    request.kwargs = match.kwargs;
-    request.args = match.args;
-
-    final viewFunction = match.viewFunction;
-    if (viewFunction != null) {
-      return await viewFunction(request);
-    }
-
-    return HttpResponse(
-      statusCode: 500,
-      body: 'No view function found',
-      headers: {'content-type': 'text/plain'},
-    );
+    final viewFunction = match.func;
+    return await viewFunction(request, match.kwargs);
   }
 
   void _extractCookiesFromResponse(HttpResponse response) {
@@ -314,12 +306,14 @@ class TestClient {
     _session!['_auth_user_backend'] = 'test_backend';
     
     if (userDetails != null) {
-      _session!.addAll(userDetails);
+      for (final entry in userDetails.entries) {
+        _session![entry.key] = entry.value;
+      }
     }
   }
 
   void logout() {
-    _session?.flush();
+    _session?.clear();
     _session = null;
   }
 
@@ -356,27 +350,37 @@ class TestClient {
 }
 
 class TestHttpRequest extends HttpRequest {
-  final String body;
-  final CookieJar cookies;
+  final String _bodyString;
+  final CookieJar _cookieJar;
   Session? session;
 
   TestHttpRequest({
     required String method,
     required Uri uri,
     required Map<String, String> headers,
-    required this.body,
-    required this.cookies,
+    required String body,
+    required CookieJar cookies,
     this.session,
-  }) : super(
-    method: method,
-    uri: uri,
-    headers: headers,
-  );
+  }) : _bodyString = body,
+       _cookieJar = cookies,
+       super(_createShelfRequest(method, uri, headers, body));
+
+  static shelf.Request _createShelfRequest(String method, Uri uri, Map<String, String> headers, String body) {
+    return shelf.Request(method, uri, headers: headers, body: body);
+  }
 
   @override
-  Future<String> readAsString() async => body;
+  Future<String> get body async => _bodyString;
 
   @override
+  Map<String, Cookie> get cookies {
+    final result = <String, Cookie>{};
+    for (final cookie in _cookieJar.getCookies(uri)) {
+      result[cookie.name] = cookie;
+    }
+    return result;
+  }
+
   bool get hasSession => session != null;
 }
 
@@ -387,7 +391,7 @@ class TestResponse {
   TestResponse(this._response, this._request);
 
   int get statusCode => _response.statusCode;
-  String get body => _response.body;
+  String get body => _response.body?.toString() ?? '';
   Map<String, String> get headers => _response.headers;
   TestHttpRequest get request => _request;
 

@@ -1,5 +1,11 @@
+import '../middleware/session.dart';
+import '../http/request.dart';
+import 'file_store.dart';
+
 export '../middleware/session.dart';
 export 'file_store.dart';
+
+enum SessionSameSite { strict, lax, none }
 
 class SessionConfiguration {
   final String engine;
@@ -8,7 +14,7 @@ class SessionConfiguration {
   final String? sessionCookieDomain;
   final bool sessionCookieSecure;
   final bool sessionCookieHttpOnly;
-  final SameSite sessionCookieSameSite;
+  final SessionSameSite sessionCookieSameSite;
   final String sessionCookiePath;
   final bool sessionSaveEveryRequest;
   final bool sessionExpireAtBrowserClose;
@@ -25,7 +31,7 @@ class SessionConfiguration {
     this.sessionCookieDomain,
     this.sessionCookieSecure = false,
     this.sessionCookieHttpOnly = true,
-    this.sessionCookieSameSite = SameSite.lax,
+    this.sessionCookieSameSite = SessionSameSite.lax,
     this.sessionCookiePath = '/',
     this.sessionSaveEveryRequest = false,
     this.sessionExpireAtBrowserClose = false,
@@ -38,7 +44,7 @@ class SessionConfiguration {
 
   SessionStore createSessionStore() {
     SessionStore store;
-    
+
     switch (engine) {
       case 'file':
         store = FileSessionStore(sessionPath: sessionFileStorePath);
@@ -51,7 +57,7 @@ class SessionConfiguration {
         break;
       case 'signed_cookies':
         store = SignedCookieSessionStore(
-          secretKey: 'your-secret-key-here', // Should come from settings
+          secretKey: 'your-secret-key-here',
         );
         break;
       case 'memory':
@@ -87,15 +93,19 @@ class SessionConfiguration {
 
 extension HttpRequestSessionExtension on HttpRequest {
   Session get session => middlewareState['session'] as Session;
-  Messages get messages => middlewareState['messages'] as Messages;
-  
+
+  dynamic get messages => middlewareState['messages'];
+
   bool get hasSession => middlewareState.containsKey('session');
+
   bool get hasMessages => middlewareState.containsKey('messages');
 }
 
 class SessionManager {
   static final SessionManager _instance = SessionManager._internal();
+
   factory SessionManager() => _instance;
+
   SessionManager._internal();
 
   SessionConfiguration? _config;
@@ -110,14 +120,16 @@ class SessionManager {
 
   SessionStore get store {
     if (_store == null) {
-      throw StateError('SessionManager not configured. Call configure() first.');
+      throw StateError(
+          'SessionManager not configured. Call configure() first.');
     }
     return _store!;
   }
 
   SessionMiddleware get middleware {
     if (_middleware == null) {
-      throw StateError('SessionManager not configured. Call configure() first.');
+      throw StateError(
+          'SessionManager not configured. Call configure() first.');
     }
     return _middleware!;
   }
@@ -162,17 +174,17 @@ class SessionTestUtils {
   }) async {
     final sessionStore = store ?? InMemorySessionStore();
     final sessionKey = await sessionStore.createSessionKey();
-    
+
     final session = Session(
       sessionKey: sessionKey,
       store: sessionStore,
       data: data,
     );
-    
+
     if (data != null) {
       await session.save();
     }
-    
+
     return session;
   }
 
