@@ -64,7 +64,7 @@ class CacheMiddleware extends BaseMiddleware {
       return false;
     }
 
-    if (cacheAnonymousOnly && request.hasUser) {
+    if (cacheAnonymousOnly && request.middlewareState.containsKey('user')) {
       return false;
     }
 
@@ -100,8 +100,9 @@ class CacheMiddleware extends BaseMiddleware {
   String _generateCacheKey(HttpRequest request) {
     final baseKey = '${request.method}:${request.path}';
     
-    if (request.queryParameters.isNotEmpty) {
-      final sortedParams = request.queryParameters.entries.toList()
+    final queryParams = request.uri.queryParameters;
+    if (queryParams.isNotEmpty) {
+      final sortedParams = queryParams.entries.toList()
         ..sort((a, b) => a.key.compareTo(b.key));
       final queryString = sortedParams
           .map((e) => '${e.key}=${e.value}')
@@ -155,7 +156,7 @@ class CacheMiddleware extends BaseMiddleware {
   HttpResponse _deserializeResponse(Map<String, dynamic> data) {
     final statusCode = data['status_code'] as int;
     final headers = Map<String, String>.from(data['headers'] as Map);
-    final body = data['body'] as String;
+    final body = data['body']?.toString() ?? '';
 
     headers['x-cache'] = 'HIT';
     headers['x-cache-date'] = DateTime.fromMillisecondsSinceEpoch(
@@ -163,7 +164,7 @@ class CacheMiddleware extends BaseMiddleware {
     ).toIso8601String();
 
     return HttpResponse(
-      body: body,
+      body,
       statusCode: statusCode,
       headers: headers,
     );
@@ -210,6 +211,7 @@ class ETagMiddleware extends BaseMiddleware {
       final ifNoneMatch = request.headers['if-none-match'];
       if (ifNoneMatch == etag) {
         return HttpResponse(
+          '',
           statusCode: 304,
           headers: {
             'etag': etag,
@@ -222,7 +224,7 @@ class ETagMiddleware extends BaseMiddleware {
     return response;
   }
 
-  String _generateETag(String content) {
+  String _generateETag(Object? content) {
     return '"${content.hashCode.abs().toRadixString(16)}"';
   }
 }
@@ -244,6 +246,7 @@ class ConditionalGetMiddleware extends BaseMiddleware {
 
         if (!resourceDate.isAfter(clientDate)) {
           return HttpResponse(
+            '',
             statusCode: 304,
             headers: {
               'last-modified': lastModified,

@@ -5,8 +5,6 @@ import 'file_store.dart';
 export '../middleware/session.dart';
 export 'file_store.dart';
 
-enum SessionSameSite { strict, lax, none }
-
 class SessionConfiguration {
   final String engine;
   final String sessionCookieName;
@@ -108,12 +106,10 @@ class SessionManager {
 
   SessionManager._internal();
 
-  SessionConfiguration? _config;
   SessionStore? _store;
   SessionMiddleware? _middleware;
 
   void configure(SessionConfiguration config) {
-    _config = config;
     _store = config.createSessionStore();
     _middleware = config.createSessionMiddleware();
   }

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 
@@ -10,7 +9,6 @@ import 'cache.dart';
 class FileCache extends CacheBackend {
   final String _cachePath;
   final Duration _defaultTimeout;
-  final Random _random = Random();
   
   FileCache({
     required String cachePath,
@@ -255,13 +253,11 @@ class FileCache extends CacheBackend {
 
 class TieredCache extends CacheBackend {
   final List<Cache> _tiers;
-  final Duration _defaultTimeout;
   
   TieredCache({
     required List<Cache> tiers,
     Duration? defaultTimeout,
-  }) : _tiers = tiers,
-       _defaultTimeout = defaultTimeout ?? const Duration(minutes: 5) {
+  }) : _tiers = tiers {
     if (tiers.isEmpty) {
       throw ArgumentError('At least one cache tier is required');
     }
