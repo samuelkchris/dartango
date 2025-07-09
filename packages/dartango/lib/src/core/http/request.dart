@@ -21,6 +21,8 @@ class HttpRequest {
   bool _cookiesParsed = false;
 
   HttpRequest(this._shelfRequest);
+  
+  shelf.Request get shelfRequest => _shelfRequest;
 
   String get method => _shelfRequest.method;
   Uri get uri => _shelfRequest.requestedUri;
