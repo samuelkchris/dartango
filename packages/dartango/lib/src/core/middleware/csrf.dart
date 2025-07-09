@@ -117,12 +117,23 @@ class CsrfViewMiddleware extends BaseMiddleware {
   }
 
   bool _isExempt(HttpRequest request, Function viewFunc) {
+    if (request.middlewareState['csrf_exempt'] == true) {
+      return true;
+    }
+    
     final path = request.uri.path;
     
-    for (final pattern in exemptUrlPatterns) {
-      if (RegExp(pattern).hasMatch(path)) {
-        return true;
+    if (exemptUrls) {
+      for (final pattern in exemptUrlPatterns) {
+        if (RegExp(pattern).hasMatch(path)) {
+          return true;
+        }
       }
+    }
+
+    final viewName = viewFunc.runtimeType.toString();
+    if (exemptViews.contains(viewName)) {
+      return true;
     }
 
     return false;
@@ -269,6 +280,22 @@ class CsrfViewMiddleware extends BaseMiddleware {
   }
 
   HttpResponse _rejectRequest(HttpRequest request, String reason) {
+    if (failureView != csrfFailureView) {
+      try {
+        return HttpResponse(
+          '<h1>CSRF Verification Failed</h1><p>$reason</p>',
+          statusCode: 403,
+          headers: {'Content-Type': 'text/html'},
+        );
+      } catch (e) {
+        return HttpResponse(
+          reasonForFailure,
+          statusCode: 403,
+          headers: {'Content-Type': 'text/plain'},
+        );
+      }
+    }
+    
     return HttpResponse(
       reasonForFailure,
       statusCode: 403,

@@ -60,7 +60,7 @@ class SecurityMiddleware extends BaseMiddleware {
 
   @override
   FutureOr<HttpResponse?> processRequest(HttpRequest request) {
-    if (secureSslRedirect && !_isSecure(request)) {
+    if ((secureRedirect || secureSslRedirect) && !_isSecure(request)) {
       if (!_isExempt(request.path)) {
         return _redirectToHttps(request);
       }

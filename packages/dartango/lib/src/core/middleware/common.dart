@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 
 import '../http/request.dart';
 import '../http/response.dart';
@@ -215,16 +217,14 @@ class CommonMiddleware extends BaseMiddleware {
   }
 
   String _generateEtag(String content) {
-    final hash = content.hashCode.toUnsigned(32).toRadixString(16);
-    return '"$hash"';
+    final bytes = utf8.encode(content);
+    final digest = sha256.convert(bytes);
+    return '"${digest.toString().substring(0, 16)}"';
   }
 
   String _generateEtagFromBytes(List<int> content) {
-    int hash = 0;
-    for (final byte in content) {
-      hash = ((hash << 5) - hash + byte) & 0xFFFFFFFF;
-    }
-    return '"${hash.toUnsigned(32).toRadixString(16)}"';
+    final digest = sha256.convert(content);
+    return '"${digest.toString().substring(0, 16)}"';
   }
 
   HttpResponse _handleConditionalGet(HttpRequest request, HttpResponse response) {

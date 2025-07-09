@@ -17,7 +17,7 @@ abstract class SessionStore {
 }
 
 class Session {
-  final String sessionKey;
+  String sessionKey;
   final Map<String, dynamic> _data;
   final SessionStore _store;
   bool _modified = false;
@@ -117,6 +117,7 @@ class Session {
     await _store.save(newKey, _data, _getSessionExpiry());
     await _store.delete(oldKey);
     
+    sessionKey = newKey;
     _modified = true;
   }
 
