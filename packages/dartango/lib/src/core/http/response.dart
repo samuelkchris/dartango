@@ -334,7 +334,7 @@ class HttpResponse {
       ..maxAge = maxAge
       ..secure = secure ?? false
       ..httpOnly = httpOnly ?? false
-      ..sameSite = sameSite ?? SameSite.lax;
+      ..sameSite = sameSite;
 
     return setHeader('Set-Cookie', cookie.toString());
   }
