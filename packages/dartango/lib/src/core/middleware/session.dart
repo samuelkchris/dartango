@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' as io;
 import 'dart:math';
-import 'dart:io';
 import 'package:crypto/crypto.dart';
 
 import '../http/request.dart';
 import '../http/response.dart';
 import 'base.dart';
+
+enum SessionSameSite { strict, lax, none }
 
 abstract class SessionStore {
   FutureOr<Map<String, dynamic>?> load(String sessionKey);
@@ -132,7 +134,7 @@ class SessionMiddleware extends BaseMiddleware {
   final String? cookieDomain;
   final bool cookieSecure;
   final bool cookieHttpOnly;
-  final SameSite? cookieSameSite;
+  final SessionSameSite cookieSameSite;
   final Duration cookieAge;
   final String cookiePath;
   final bool saveEveryRequest;
@@ -143,14 +145,14 @@ class SessionMiddleware extends BaseMiddleware {
     this.cookieDomain,
     bool? cookieSecure,
     bool? cookieHttpOnly,
-    SameSite? cookieSameSite,
+    SessionSameSite? cookieSameSite,
     Duration? cookieAge,
     String? cookiePath,
     bool? saveEveryRequest,
   })  : cookieName = cookieName ?? 'sessionid',
         cookieSecure = cookieSecure ?? false,
         cookieHttpOnly = cookieHttpOnly ?? true,
-        cookieSameSite = cookieSameSite ?? SameSite.lax,
+        cookieSameSite = cookieSameSite ?? SessionSameSite.lax,
         cookieAge = cookieAge ?? const Duration(seconds: 1209600),
         cookiePath = cookiePath ?? '/',
         saveEveryRequest = saveEveryRequest ?? false;
@@ -212,12 +214,23 @@ class SessionMiddleware extends BaseMiddleware {
           domain: cookieDomain,
           secure: cookieSecure,
           httpOnly: cookieHttpOnly,
-          sameSite: cookieSameSite,
+          sameSite: _convertSameSite(cookieSameSite),
         );
       }
     }
 
     return response;
+  }
+
+  io.SameSite _convertSameSite(SessionSameSite sameSite) {
+    switch (sameSite) {
+      case SessionSameSite.strict:
+        return io.SameSite.strict;
+      case SessionSameSite.lax:
+        return io.SameSite.lax;
+      case SessionSameSite.none:
+        return io.SameSite.none;
+    }
   }
 }
 
