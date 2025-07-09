@@ -5,13 +5,12 @@ import 'models.dart';
 import 'queryset.dart';
 
 abstract class BaseManager<T extends Model> {
-  final Model _model;
   final String _tableName;
   final String? _database;
   
-  BaseManager(this._model) 
-      : _tableName = _model.tableName,
-        _database = _model.database;
+  BaseManager(Model model) 
+      : _tableName = model.tableName,
+        _database = model.database;
 
   Type get modelType => T;
   String get tableName => _tableName;
@@ -87,12 +86,11 @@ abstract class BaseManager<T extends Model> {
   }
 
   // Utility methods
-  Future<List<dynamic>> getValuesList(List<String> fields, {bool flat = false}) => getQuerySet().valuesList(fields, flat: flat);
-  Future<List<Map<String, dynamic>>> getValues(List<String> fields) => getQuerySet().values(fields);
+  Future<List<dynamic>> getValuesList(List<String> fields, {bool flat = false}) => getQuerySet().getValuesList(fields, flat: flat);
+  Future<List<Map<String, dynamic>>> getValues(List<String> fields) => getQuerySet().getValues(fields);
 
   // Private helper methods
   T _createModelFromData(Map<String, dynamic> data) {
-    // In a real implementation, this would use reflection to create the model
     return (T as dynamic).fromMap(data) as T;
   }
 
@@ -276,18 +274,28 @@ class HierarchicalManager<T extends Model> extends BaseManager<T> {
   }
 
   QuerySet<T> leaves() {
-    // In a real implementation, this would use subqueries
-    return getQuerySet();
+    final subquery = 'SELECT parent FROM ${_tableName} WHERE parent IS NOT NULL';
+    return getQuerySet().where('id NOT IN ($subquery)');
   }
 
   QuerySet<T> ancestors(dynamic nodeId) {
-    // In a real implementation, this would traverse the hierarchy
-    return getQuerySet();
+    final sql = '''WITH RECURSIVE ancestors AS (
+        SELECT id, parent, 1 as level FROM ${_tableName} WHERE id = ?
+        UNION ALL
+        SELECT t.id, t.parent, a.level + 1 FROM ${_tableName} t
+        JOIN ancestors a ON t.id = a.parent
+    ) SELECT * FROM ancestors WHERE id != ?''';
+    return getQuerySet().raw(sql, [nodeId, nodeId]);
   }
 
   QuerySet<T> descendants(dynamic nodeId) {
-    // In a real implementation, this would traverse the hierarchy
-    return getQuerySet();
+    final sql = '''WITH RECURSIVE descendants AS (
+        SELECT id, parent, 1 as level FROM ${_tableName} WHERE parent = ?
+        UNION ALL
+        SELECT t.id, t.parent, d.level + 1 FROM ${_tableName} t
+        JOIN descendants d ON t.parent = d.id
+    ) SELECT * FROM descendants''';
+    return getQuerySet().raw(sql, [nodeId]);
   }
 
   QuerySet<T> siblings(dynamic nodeId) {
@@ -303,8 +311,8 @@ class GeoManager<T extends Model> extends BaseManager<T> {
   GeoManager(Model model) : super(model);
 
   QuerySet<T> withinDistance(double latitude, double longitude, double distanceKm) {
-    // In a real implementation, this would use PostGIS or similar
-    return getQuerySet();
+    final distanceClause = '(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) <= ?';
+    return getQuerySet().where(distanceClause, [latitude, longitude, latitude, distanceKm]);
   }
 
   QuerySet<T> withinBounds(double northLat, double southLat, double eastLng, double westLng) {
@@ -317,8 +325,8 @@ class GeoManager<T extends Model> extends BaseManager<T> {
   }
 
   QuerySet<T> orderByDistance(double latitude, double longitude) {
-    // In a real implementation, this would calculate distance
-    return getQuerySet();
+    final distanceSelect = '(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) as distance';
+    return getQuerySet().extra(select: [distanceSelect], params: [latitude, longitude, latitude]).orderBy(['distance']);
   }
 }
 

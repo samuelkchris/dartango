@@ -57,6 +57,9 @@ class QueryBuilder {
   int? _limit;
   int? _offset;
   final List<dynamic> _parameters = [];
+  String? _rawSql;
+  
+  set rawSql(String? sql) => _rawSql = sql;
 
   // Public getters for accessing private fields
   List<String> get selectFields => _select;
@@ -205,6 +208,10 @@ class QueryBuilder {
   }
 
   String toSql() {
+    if (_rawSql != null) {
+      return _rawSql!;
+    }
+    
     final buffer = StringBuffer();
     
     if (_select.isNotEmpty) {
@@ -249,6 +256,8 @@ class QueryBuilder {
   }
 
   List<dynamic> get parameters => List.unmodifiable(_parameters);
+  
+  List<dynamic> get mutableParameters => _parameters;
 
   QueryBuilder clone() {
     final clone = QueryBuilder();
@@ -261,6 +270,7 @@ class QueryBuilder {
     clone._orderBy.addAll(_orderBy);
     clone._limit = _limit;
     clone._offset = _offset;
+    clone._rawSql = _rawSql;
     clone._parameters.addAll(_parameters);
     return clone;
   }

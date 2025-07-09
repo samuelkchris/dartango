@@ -194,7 +194,6 @@ class QuerySet<T extends Model> {
     clone._selectRelated.addAll(fields);
     
     for (final field in fields) {
-      // In a real implementation, this would add JOIN clauses
       clone._queryBuilder.leftJoin('${field}_table', '${_tableName}.${field}_id = ${field}_table.id');
     }
     
@@ -213,7 +212,6 @@ class QuerySet<T extends Model> {
     clone._annotations.addAll(annotations);
     
     for (final entry in annotations.entries) {
-      // In a real implementation, this would handle aggregation functions
       clone._queryBuilder.select(['${entry.value} as ${entry.key}']);
     }
     
@@ -290,7 +288,10 @@ class QuerySet<T extends Model> {
   // Raw SQL methods
   QuerySet<T> raw(String sql, [List<dynamic>? parameters]) {
     final clone = _clone();
-    // In a real implementation, this would handle raw SQL
+    clone._queryBuilder.rawSql = sql;
+    if (parameters != null) {
+      clone._queryBuilder.mutableParameters.addAll(parameters);
+    }
     return clone;
   }
 
@@ -303,13 +304,17 @@ class QuerySet<T extends Model> {
 
   QuerySet<T> intersection(QuerySet<T> other) {
     final clone = _clone();
-    // In a real implementation, this would handle intersection
+    final intersectQuery = 'SELECT * FROM (${clone._queryBuilder.toSql()}) INTERSECT (${other._queryBuilder.toSql()})';
+    clone._queryBuilder.rawSql = intersectQuery;
+    clone._queryBuilder.mutableParameters.addAll(other._queryBuilder.parameters);
     return clone;
   }
 
   QuerySet<T> difference(QuerySet<T> other) {
     final clone = _clone();
-    // In a real implementation, this would handle difference
+    final exceptQuery = 'SELECT * FROM (${clone._queryBuilder.toSql()}) EXCEPT (${other._queryBuilder.toSql()})';
+    clone._queryBuilder.rawSql = exceptQuery;
+    clone._queryBuilder.mutableParameters.addAll(other._queryBuilder.parameters);
     return clone;
   }
 

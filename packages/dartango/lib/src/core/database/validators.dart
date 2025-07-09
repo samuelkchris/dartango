@@ -469,12 +469,13 @@ class UniqueValidator<T> extends Validator<T> {
   UniqueValidator(this.checkUnique, {this.message = 'This value must be unique'});
 
   @override
-  void validate(T? value) async {
+  void validate(T? value) {
     if (value != null) {
-      final isUnique = await checkUnique(value);
-      if (!isUnique) {
-        throw ValidationException(message);
-      }
+      checkUnique(value).then((isUnique) {
+        if (!isUnique) {
+          throw ValidationException(message);
+        }
+      });
     }
   }
 }
