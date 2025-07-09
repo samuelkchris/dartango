@@ -504,7 +504,7 @@ class AuthenticationMiddleware extends BaseMiddleware {
   @override
   FutureOr<HttpResponse?> processRequest(HttpRequest request) async {
     final user = await _getUser(request);
-    request.context['user'] = user;
+    request.middlewareState['user'] = user;
 
     if (requiresAuthentication && 
         user.isAnonymous && 
@@ -516,7 +516,7 @@ class AuthenticationMiddleware extends BaseMiddleware {
   }
 
   Future<User> _getUser(HttpRequest request) async {
-    final session = request.context['session'] as Session?;
+    final session = request.middlewareState['session'] as Session?;
     if (session == null) {
       return AnonymousUser();
     }
@@ -898,7 +898,7 @@ class SessionAuthenticationBackend extends AuthenticationBackend {
 
   @override
   Future<User?> authenticate(HttpRequest request, String? username, String? password) async {
-    final session = request.context['session'] as Session?;
+    final session = request.middlewareState['session'] as Session?;
     if (session == null) {
       return null;
     }
@@ -981,7 +981,7 @@ Future<User?> authenticate(HttpRequest request, String? username, String? passwo
 }
 
 Future<void> login(HttpRequest request, User user) async {
-  final session = request.context['session'] as Session?;
+  final session = request.middlewareState['session'] as Session?;
   if (session == null) {
     throw AuthenticationError('No session available for login');
   }
@@ -1004,7 +1004,7 @@ Future<void> login(HttpRequest request, User user) async {
 }
 
 Future<void> logout(HttpRequest request) async {
-  final session = request.context['session'] as Session?;
+  final session = request.middlewareState['session'] as Session?;
   if (session == null) {
     return;
   }
@@ -1018,7 +1018,7 @@ Future<void> logout(HttpRequest request) async {
   
   await session.regenerateKey();
   
-  request.context['user'] = AnonymousUser();
+  request.middlewareState['user'] = AnonymousUser();
 }
 
 String _getUserHash(User user) {

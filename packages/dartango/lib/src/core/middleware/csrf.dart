@@ -134,7 +134,7 @@ class CsrfViewMiddleware extends BaseMiddleware {
   }
 
   String? _getCsrfToken(HttpRequest request) {
-    final session = request.context['session'] as Session?;
+    final session = request.middlewareState['session'] as Session?;
     if (session != null) {
       return session['_csrf_token'] as String?;
     }
@@ -239,7 +239,7 @@ class CsrfViewMiddleware extends BaseMiddleware {
 
     final token = _generateCsrfToken();
     
-    final session = request.context['session'] as Session?;
+    final session = request.middlewareState['session'] as Session?;
     if (session != null) {
       session['_csrf_token'] = token;
     }
@@ -394,7 +394,7 @@ class CsrfExemptMiddleware extends BaseMiddleware {
     Map<String, dynamic> viewKwargs,
   ) {
     if (_isExempt(request)) {
-      request.context['csrf_exempt'] = true;
+      request.middlewareState['csrf_exempt'] = true;
     }
     return null;
   }
@@ -423,7 +423,7 @@ String generateCsrfToken() {
 }
 
 String getCsrfToken(HttpRequest request) {
-  final session = request.context['session'] as Session?;
+  final session = request.middlewareState['session'] as Session?;
   if (session != null) {
     final token = session['_csrf_token'] as String?;
     if (token != null) {

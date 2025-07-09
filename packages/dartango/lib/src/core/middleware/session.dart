@@ -162,7 +162,7 @@ class SessionMiddleware extends BaseMiddleware {
     if (sessionKey != null) {
       final sessionData = await sessionStore.load(sessionKey);
       if (sessionData != null) {
-        request.context['session'] = Session(
+        request.middlewareState['session'] = Session(
           sessionKey: sessionKey,
           store: sessionStore,
           data: sessionData,
@@ -172,7 +172,7 @@ class SessionMiddleware extends BaseMiddleware {
     }
     
     final newSessionKey = await sessionStore.createSessionKey();
-    request.context['session'] = Session(
+    request.middlewareState['session'] = Session(
       sessionKey: newSessionKey,
       store: sessionStore,
     );
@@ -185,7 +185,7 @@ class SessionMiddleware extends BaseMiddleware {
     HttpRequest request,
     HttpResponse response,
   ) async {
-    final session = request.context['session'] as Session?;
+    final session = request.middlewareState['session'] as Session?;
     if (session == null) {
       return response;
     }
@@ -372,12 +372,12 @@ class MessageMiddleware extends BaseMiddleware {
 
   @override
   FutureOr<HttpResponse?> processRequest(HttpRequest request) {
-    final session = request.context['session'] as Session?;
+    final session = request.middlewareState['session'] as Session?;
     if (session != null) {
       final messages = session.getFlash(messageKey) as List<Map<String, dynamic>>? ?? [];
-      request.context['messages'] = Messages(messages);
+      request.middlewareState['messages'] = Messages(messages);
     } else {
-      request.context['messages'] = Messages([]);
+      request.middlewareState['messages'] = Messages([]);
     }
     return null;
   }
@@ -387,8 +387,8 @@ class MessageMiddleware extends BaseMiddleware {
     HttpRequest request,
     HttpResponse response,
   ) {
-    final messages = request.context['messages'] as Messages?;
-    final session = request.context['session'] as Session?;
+    final messages = request.middlewareState['messages'] as Messages?;
+    final session = request.middlewareState['session'] as Session?;
     
     if (messages != null && session != null && messages.hasUnconsumed) {
       final unconsumed = messages.unconsumed;

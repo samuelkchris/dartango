@@ -36,7 +36,6 @@ class HttpRequest {
   Map<String, String> get headers => _shelfRequest.headers;
   Map<String, dynamic> get meta => _meta;
   Map<String, dynamic> get middlewareState => _middlewareState;
-  Map<String, dynamic> get context => _middlewareState;
 
   String? getHeader(String name) => headers[name.toLowerCase()];
   List<String> getHeaders(String name) {
