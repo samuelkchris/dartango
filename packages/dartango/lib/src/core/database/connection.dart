@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:postgres/postgres.dart';
+import 'package:sqlite3/sqlite3.dart';
+
 import 'exceptions.dart';
 import 'query.dart';
 
@@ -268,30 +271,71 @@ class _PooledConnection {
 
 class PostgreSQLConnection implements DatabaseConnection {
   final DatabaseConfig config;
-  bool _isOpen = false;
+  Connection? _connection;
   bool _inTransaction = false;
 
   PostgreSQLConnection(this.config);
 
   Future<void> _connect() async {
-    await Future.delayed(Duration(milliseconds: 100));
-    _isOpen = true;
+    try {
+      final endpoint = Endpoint(
+        host: config.host,
+        port: config.port,
+        database: config.database,
+        username: config.username,
+        password: config.password,
+      );
+      
+      final settings = ConnectionSettings(
+        sslMode: config.enableSsl ? SslMode.require : SslMode.disable,
+        connectTimeout: config.connectionTimeout,
+        queryTimeout: config.queryTimeout,
+        timeZone: config.timezone,
+        applicationName: 'Dartango',
+      );
+      
+      _connection = await Connection.open(endpoint, settings: settings);
+    } catch (e) {
+      throw DatabaseException('Failed to connect to PostgreSQL: $e');
+    }
   }
 
   @override
   Future<QueryResult> execute(String sql, [List<dynamic>? parameters]) async {
-    if (!_isOpen) await _connect();
+    if (!isOpen) await _connect();
     
     try {
-      await Future.delayed(Duration(milliseconds: 10));
+      final result = await _connection!.execute(
+        sql,
+        parameters: parameters ?? const [],
+      );
+      
+      final rows = <Map<String, dynamic>>[];
+      final columns = <String>[];
+      
+      if (result.isNotEmpty) {
+        // Get column names from first row
+        for (int i = 0; i < result.first.length; i++) {
+          columns.add('column_$i'); // We'll use generic names for now
+        }
+        
+        for (final row in result) {
+          final rowMap = <String, dynamic>{};
+          for (int i = 0; i < row.length; i++) {
+            rowMap[columns[i]] = row[i];
+          }
+          rows.add(rowMap);
+        }
+      }
+      
       return QueryResult(
-        affectedRows: 1,
+        affectedRows: result.affectedRows,
         insertId: null,
-        columns: ['id', 'name'],
-        rows: [{'id': 1, 'name': 'test'}],
+        columns: columns,
+        rows: rows,
       );
     } catch (e) {
-      if (config.autoReconnect && !_isOpen) {
+      if (config.autoReconnect && !isOpen) {
         await _reconnect();
         return execute(sql, parameters);
       }
@@ -324,13 +368,15 @@ class PostgreSQLConnection implements DatabaseConnection {
 
   @override
   Future<void> beginTransaction() async {
-    if (!_isOpen) await _connect();
+    if (!isOpen) await _connect();
+    await _connection!.execute('BEGIN');
     _inTransaction = true;
   }
 
   @override
   Future<void> commitTransaction() async {
     if (_inTransaction) {
+      await _connection!.execute('COMMIT');
       _inTransaction = false;
     }
   }
@@ -338,59 +384,96 @@ class PostgreSQLConnection implements DatabaseConnection {
   @override
   Future<void> rollbackTransaction() async {
     if (_inTransaction) {
+      await _connection!.execute('ROLLBACK');
       _inTransaction = false;
     }
   }
 
   @override
   Future<void> setSavepoint(String name) async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    await _connection!.execute('SAVEPOINT $name');
   }
 
   @override
   Future<void> releaseSavepoint(String name) async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    await _connection!.execute('RELEASE SAVEPOINT $name');
   }
 
   @override
   Future<void> rollbackToSavepoint(String name) async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    await _connection!.execute('ROLLBACK TO SAVEPOINT $name');
   }
 
   @override
   Future<void> ping() async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    await _connection!.execute('SELECT 1');
   }
 
   @override
   Future<Map<String, dynamic>> getServerInfo() async {
-    return {'version': 'PostgreSQL 13.0'};
+    if (!isOpen) await _connect();
+    final result = await _connection!.execute('SELECT version()');
+    return {'version': result.first[0] as String};
   }
 
   @override
   Future<List<String>> getTableNames() async {
-    return ['users', 'posts', 'comments'];
+    if (!isOpen) await _connect();
+    final result = await _connection!.execute(
+      "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+    );
+    return result.map((row) => row[0] as String).toList();
   }
 
   @override
   Future<List<Map<String, dynamic>>> getTableSchema(String tableName) async {
-    return [
-      {'column_name': 'id', 'data_type': 'integer', 'is_nullable': 'NO', 'column_default': 'nextval(\'seq\')'},
-      {'column_name': 'name', 'data_type': 'character varying', 'is_nullable': 'YES', 'column_default': null},
-    ];
+    if (!isOpen) await _connect();
+    final result = await _connection!.execute(
+      '''
+      SELECT column_name, data_type, is_nullable, column_default
+      FROM information_schema.columns
+      WHERE table_name = @tableName
+      ORDER BY ordinal_position
+      ''',
+      parameters: {'tableName': tableName},
+    );
+    
+    return result.map((row) => {
+      'column_name': row[0],
+      'data_type': row[1],
+      'is_nullable': row[2],
+      'column_default': row[3],
+    }).toList();
   }
 
   @override
   Future<List<Map<String, dynamic>>> getIndexes(String tableName) async {
-    return [
-      {'indexname': '${tableName}_pkey', 'indexdef': 'CREATE UNIQUE INDEX ${tableName}_pkey ON $tableName USING btree (id)'},
-    ];
+    if (!isOpen) await _connect();
+    final result = await _connection!.execute(
+      '''
+      SELECT indexname, indexdef
+      FROM pg_indexes
+      WHERE tablename = @tableName
+      ''',
+      parameters: {'tableName': tableName},
+    );
+    
+    return result.map((row) => {
+      'indexname': row[0],
+      'indexdef': row[1],
+    }).toList();
   }
 
   @override
   Future<void> close() async {
-    if (_isOpen) {
-      _isOpen = false;
+    if (_connection != null) {
+      await _connection!.close();
+      _connection = null;
+      _inTransaction = false;
     }
   }
 
@@ -400,7 +483,7 @@ class PostgreSQLConnection implements DatabaseConnection {
   }
 
   @override
-  bool get isOpen => _isOpen;
+  bool get isOpen => _connection != null;
 
   @override
   String get databaseName => config.database;
@@ -417,6 +500,7 @@ class MySQLConnection implements DatabaseConnection {
   MySQLConnection(this.config);
 
   Future<void> _connect() async {
+    // MySQL implementation would go here
     await Future.delayed(Duration(milliseconds: 100));
     _isOpen = true;
   }
@@ -554,27 +638,56 @@ class MySQLConnection implements DatabaseConnection {
 
 class SQLiteConnection implements DatabaseConnection {
   final DatabaseConfig config;
-  bool _isOpen = false;
+  Database? _database;
   bool _inTransaction = false;
 
   SQLiteConnection(this.config);
 
   Future<void> _connect() async {
-    await Future.delayed(Duration(milliseconds: 50));
-    _isOpen = true;
+    try {
+      _database = sqlite3.open(config.database);
+    } catch (e) {
+      throw DatabaseException('Failed to connect to SQLite: $e');
+    }
   }
 
   @override
   Future<QueryResult> execute(String sql, [List<dynamic>? parameters]) async {
-    if (!_isOpen) await _connect();
+    if (!isOpen) await _connect();
     
     try {
-      await Future.delayed(Duration(milliseconds: 5));
+      final stmt = _database!.prepare(sql);
+      
+      int affectedRows = 0;
+      int? insertId;
+      final rows = <Map<String, dynamic>>[];
+      final columns = <String>[];
+      
+      if (sql.trim().toUpperCase().startsWith('SELECT')) {
+        final result = stmt.select(parameters ?? []);
+        columns.addAll(result.columnNames);
+        for (final row in result) {
+          final rowMap = <String, dynamic>{};
+          for (int i = 0; i < columns.length; i++) {
+            rowMap[columns[i]] = row[i];
+          }
+          rows.add(rowMap);
+        }
+      } else {
+        stmt.execute(parameters ?? []);
+        affectedRows = _database!.updatedRows;
+        if (sql.trim().toUpperCase().startsWith('INSERT')) {
+          insertId = _database!.lastInsertRowId;
+        }
+      }
+      
+      stmt.dispose();
+      
       return QueryResult(
-        affectedRows: 1,
-        insertId: 1,
-        columns: ['id', 'name'],
-        rows: [{'id': 1, 'name': 'test'}],
+        affectedRows: affectedRows,
+        insertId: insertId,
+        columns: columns,
+        rows: rows,
       );
     } catch (e) {
       throw DatabaseException('Query execution failed: $e');
@@ -606,13 +719,15 @@ class SQLiteConnection implements DatabaseConnection {
 
   @override
   Future<void> beginTransaction() async {
-    if (!_isOpen) await _connect();
+    if (!isOpen) await _connect();
+    _database!.execute('BEGIN');
     _inTransaction = true;
   }
 
   @override
   Future<void> commitTransaction() async {
     if (_inTransaction) {
+      _database!.execute('COMMIT');
       _inTransaction = false;
     }
   }
@@ -620,64 +735,89 @@ class SQLiteConnection implements DatabaseConnection {
   @override
   Future<void> rollbackTransaction() async {
     if (_inTransaction) {
+      _database!.execute('ROLLBACK');
       _inTransaction = false;
     }
   }
 
   @override
   Future<void> setSavepoint(String name) async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    _database!.execute('SAVEPOINT $name');
   }
 
   @override
   Future<void> releaseSavepoint(String name) async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    _database!.execute('RELEASE SAVEPOINT $name');
   }
 
   @override
   Future<void> rollbackToSavepoint(String name) async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    _database!.execute('ROLLBACK TO SAVEPOINT $name');
   }
 
   @override
   Future<void> ping() async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    _database!.execute('SELECT 1');
   }
 
   @override
   Future<Map<String, dynamic>> getServerInfo() async {
-    return {'version': 'SQLite 3.35.0'};
+    if (!isOpen) await _connect();
+    final result = _database!.select('SELECT sqlite_version()');
+    return {'version': 'SQLite ${result.first[0] as String}'};
   }
 
   @override
   Future<List<String>> getTableNames() async {
-    return ['users', 'posts', 'comments'];
+    if (!isOpen) await _connect();
+    final result = _database!.select("SELECT name FROM sqlite_master WHERE type='table'");
+    return result.map((row) => row[0] as String).toList();
   }
 
   @override
   Future<List<Map<String, dynamic>>> getTableSchema(String tableName) async {
-    return [
-      {'cid': 0, 'name': 'id', 'type': 'INTEGER', 'notnull': 1, 'dflt_value': null, 'pk': 1},
-      {'cid': 1, 'name': 'name', 'type': 'TEXT', 'notnull': 0, 'dflt_value': null, 'pk': 0},
-    ];
+    if (!isOpen) await _connect();
+    final result = _database!.select('PRAGMA table_info($tableName)');
+    
+    return result.map((row) => {
+      'cid': row[0],
+      'name': row[1],
+      'type': row[2],
+      'notnull': row[3],
+      'dflt_value': row[4],
+      'pk': row[5],
+    }).toList();
   }
 
   @override
   Future<List<Map<String, dynamic>>> getIndexes(String tableName) async {
-    return [
-      {'seq': 0, 'name': 'sqlite_autoindex_${tableName}_1', 'unique': 1, 'origin': 'pk', 'partial': 0},
-    ];
+    if (!isOpen) await _connect();
+    final result = _database!.select('PRAGMA index_list($tableName)');
+    
+    return result.map((row) => {
+      'seq': row[0],
+      'name': row[1],
+      'unique': row[2],
+      'origin': row[3],
+      'partial': row[4],
+    }).toList();
   }
 
   @override
   Future<void> close() async {
-    if (_isOpen) {
-      _isOpen = false;
+    if (_database != null) {
+      _database!.dispose();
+      _database = null;
+      _inTransaction = false;
     }
   }
 
   @override
-  bool get isOpen => _isOpen;
+  bool get isOpen => _database != null;
 
   @override
   String get databaseName => config.database;
