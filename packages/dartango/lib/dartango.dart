@@ -20,3 +20,5 @@ export 'src/core/urls/namespace.dart';
 export 'src/core/urls/resolver.dart';
 export 'src/core/utils/encoding.dart';
 export 'src/core/utils/http.dart';
+export 'src/core/i18n/i18n.dart';
+export 'src/core/static_files/static_files.dart';

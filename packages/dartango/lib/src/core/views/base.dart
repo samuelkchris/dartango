@@ -209,9 +209,9 @@ abstract class RedirectView extends View {
       throw GoneException();
     }
 
-    return permanent 
-      ? HttpResponse.permanentRedirect(redirectUrl)
-      : HttpResponse.redirect(redirectUrl);
+    return permanent
+        ? HttpResponse.permanentRedirect(redirectUrl)
+        : HttpResponse.redirect(redirectUrl);
   }
 
   @override

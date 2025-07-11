@@ -32,7 +32,9 @@ Examples:
   @override
   ArgParser get argParser {
     final parser = ArgParser();
-    parser.addOption('template', abbr: 't', defaultsTo: 'default',
+    parser.addOption('template',
+        abbr: 't',
+        defaultsTo: 'default',
         allowed: ['default', 'api-only', 'minimal'],
         help: 'Template to use for the app');
     return parser;
@@ -57,7 +59,8 @@ Examples:
 
     if (!_isInDartangoProject()) {
       printError('This command must be run from within a Dartango project');
-      printInfo('Run "dartango create <project_name>" to create a new project first');
+      printInfo(
+          'Run "dartango create <project_name>" to create a new project first');
       return;
     }
 
@@ -80,7 +83,7 @@ Examples:
       );
 
       await generator.generate();
-      
+
       printSuccess('App "$appName" created successfully!');
       print('');
       print('Next steps:');
@@ -103,7 +106,7 @@ Examples:
   bool _isInDartangoProject() {
     final pubspecFile = File('pubspec.yaml');
     if (!pubspecFile.existsSync()) return false;
-    
+
     final content = pubspecFile.readAsStringSync();
     return content.contains('dartango');
   }

@@ -59,7 +59,8 @@ import 'package:dartango/dartango.dart';
 // }
 ''';
 
-    await File(path.join(modelsDir.path, '${appName}_model.dart')).writeAsString(modelsContent);
+    await File(path.join(modelsDir.path, '${appName}_model.dart'))
+        .writeAsString(modelsContent);
   }
 
   Future<void> _generateViewsFile() async {
@@ -119,7 +120,8 @@ class ${_toPascalCase(appName)}CreateView extends CreateView {
 }
 ''';
 
-    await File(path.join(viewsDir.path, '${appName}_views.dart')).writeAsString(viewsContent);
+    await File(path.join(viewsDir.path, '${appName}_views.dart'))
+        .writeAsString(viewsContent);
   }
 
   Future<void> _generateUrlsFile() async {
@@ -197,7 +199,8 @@ void main() {
 }
 ''';
 
-    await File(path.join(testDir.path, 'test_${appName}_views.dart')).writeAsString(testContent);
+    await File(path.join(testDir.path, 'test_${appName}_views.dart'))
+        .writeAsString(testContent);
   }
 
   Future<void> _generateDefaultFiles() async {
@@ -239,7 +242,8 @@ void main() {
 {% endblock %}
 ''';
 
-    await File(path.join(templatesDir.path, '${appName}_list.html')).writeAsString(listTemplate);
+    await File(path.join(templatesDir.path, '${appName}_list.html'))
+        .writeAsString(listTemplate);
 
     final detailTemplate = '''
 {% extends "base.html" %}
@@ -268,7 +272,8 @@ void main() {
 {% endblock %}
 ''';
 
-    await File(path.join(templatesDir.path, '${appName}_detail.html')).writeAsString(detailTemplate);
+    await File(path.join(templatesDir.path, '${appName}_detail.html'))
+        .writeAsString(detailTemplate);
 
     final formTemplate = '''
 {% extends "base.html" %}
@@ -307,13 +312,14 @@ void main() {
 {% endblock %}
 ''';
 
-    await File(path.join(templatesDir.path, '${appName}_form.html')).writeAsString(formTemplate);
+    await File(path.join(templatesDir.path, '${appName}_form.html'))
+        .writeAsString(formTemplate);
   }
 
   Future<void> _generateApiOnlyFiles() async {
     // Override views for API-only template
     final viewsDir = Directory(path.join(outputPath, 'views'));
-    
+
     final apiViewsContent = '''
 import 'package:dartango/dartango.dart';
 
@@ -386,7 +392,8 @@ class ${_toPascalCase(appName)}DetailApiView extends View {
 }
 ''';
 
-    await File(path.join(viewsDir.path, '${appName}_api_views.dart')).writeAsString(apiViewsContent);
+    await File(path.join(viewsDir.path, '${appName}_api_views.dart'))
+        .writeAsString(apiViewsContent);
 
     // Override URLs for API
     final apiUrlsContent = '''
@@ -399,7 +406,8 @@ final urlPatterns = [
 ];
 ''';
 
-    await File(path.join(outputPath, 'urls.dart')).writeAsString(apiUrlsContent);
+    await File(path.join(outputPath, 'urls.dart'))
+        .writeAsString(apiUrlsContent);
   }
 
   Future<void> _generateMinimalFiles() async {
@@ -412,20 +420,23 @@ final urlPatterns = [
 <p>Welcome to the $appName app!</p>
 ''';
 
-    await File(path.join(templatesDir.path, '${appName}_simple.html')).writeAsString(minimalTemplate);
+    await File(path.join(templatesDir.path, '${appName}_simple.html'))
+        .writeAsString(minimalTemplate);
   }
 
   String _toPascalCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join('');
   }
 
   String _toTitleCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join(' ');
   }
 }

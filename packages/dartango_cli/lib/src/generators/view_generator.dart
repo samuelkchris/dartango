@@ -244,7 +244,8 @@ class ${className}PermissionView extends TemplateView with ${className}Mixin {
   }
 
   Future<void> _generateTemplate() async {
-    final templatesDir = Directory(path.join(outputPath, '..', 'templates', app));
+    final templatesDir =
+        Directory(path.join(outputPath, '..', 'templates', app));
     await templatesDir.create(recursive: true);
 
     final templateFileName = '${_toSnakeCase(name)}.html';
@@ -406,7 +407,8 @@ class ${className}PermissionView extends TemplateView with ${className}Mixin {
 {% endblock %}
 ''';
 
-    await File(path.join(templatesDir.path, '${_toSnakeCase(name)}_list.html')).writeAsString(listTemplate);
+    await File(path.join(templatesDir.path, '${_toSnakeCase(name)}_list.html'))
+        .writeAsString(listTemplate);
   }
 
   Future<void> _generateDetailTemplate(Directory templatesDir) async {
@@ -451,7 +453,9 @@ class ${className}PermissionView extends TemplateView with ${className}Mixin {
 {% endblock %}
 ''';
 
-    await File(path.join(templatesDir.path, '${_toSnakeCase(name)}_detail.html')).writeAsString(detailTemplate);
+    await File(
+            path.join(templatesDir.path, '${_toSnakeCase(name)}_detail.html'))
+        .writeAsString(detailTemplate);
   }
 
   Future<void> _generateFormTemplate(Directory templatesDir) async {
@@ -510,7 +514,8 @@ class ${className}PermissionView extends TemplateView with ${className}Mixin {
 {% endblock %}
 ''';
 
-    await File(path.join(templatesDir.path, '${_toSnakeCase(name)}_form.html')).writeAsString(formTemplate);
+    await File(path.join(templatesDir.path, '${_toSnakeCase(name)}_form.html'))
+        .writeAsString(formTemplate);
   }
 
   Future<void> _generateDeleteTemplate(Directory templatesDir) async {
@@ -544,27 +549,36 @@ class ${className}PermissionView extends TemplateView with ${className}Mixin {
 {% endblock %}
 ''';
 
-    await File(path.join(templatesDir.path, '${_toSnakeCase(name)}_confirm_delete.html')).writeAsString(deleteTemplate);
+    await File(path.join(
+            templatesDir.path, '${_toSnakeCase(name)}_confirm_delete.html'))
+        .writeAsString(deleteTemplate);
   }
 
   String _toPascalCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join('');
   }
 
   String _toCamelCase(String input) {
     final parts = input.split('_');
     if (parts.isEmpty) return input;
-    
-    return parts.first.toLowerCase() + 
-           parts.skip(1).map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '').join('');
+
+    return parts.first.toLowerCase() +
+        parts
+            .skip(1)
+            .map((word) => word.isNotEmpty
+                ? word[0].toUpperCase() + word.substring(1)
+                : '')
+            .join('');
   }
 
   String _toSnakeCase(String input) {
     return input
-        .replaceAllMapped(RegExp(r'([A-Z])'), (match) => '_${match.group(1)!.toLowerCase()}')
+        .replaceAllMapped(
+            RegExp(r'([A-Z])'), (match) => '_${match.group(1)!.toLowerCase()}')
         .replaceFirst(RegExp(r'^_'), '')
         .toLowerCase();
   }
@@ -572,7 +586,8 @@ class ${className}PermissionView extends TemplateView with ${className}Mixin {
   String _toTitleCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join(' ');
   }
 }

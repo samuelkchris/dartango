@@ -11,27 +11,27 @@ abstract class TemplateNode {
 
 class NodeList extends TemplateNode {
   final List<TemplateNode> nodes;
-  
+
   NodeList(this.nodes);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final buffer = StringBuffer();
-    
+
     for (final node in nodes) {
       final result = await node.render(context);
       buffer.write(result);
     }
-    
+
     return buffer.toString();
   }
 }
 
 class TextNode extends TemplateNode {
   final String text;
-  
+
   TextNode(this.text);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     return text;
@@ -40,33 +40,34 @@ class TextNode extends TemplateNode {
 
 class VariableNode extends TemplateNode {
   final String expression;
-  
+
   VariableNode(this.expression);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     try {
       final variable = ContextVariable.parse(expression);
       final value = variable.resolve(context);
-      
+
       if (value == null) return '';
-      
+
       final result = value.toString();
-      
+
       if (context.autoEscape && !_isSafe(value)) {
         return _escapeHtml(result);
       }
-      
+
       return result;
     } catch (e) {
-      throw TemplateVariableException(expression, 'Error resolving variable: $e');
+      throw TemplateVariableException(
+          expression, 'Error resolving variable: $e');
     }
   }
-  
+
   bool _isSafe(dynamic value) {
     return value is SafeString || value is TemplateResult && value.isSafe;
   }
-  
+
   String _escapeHtml(String text) {
     return text
         .replaceAll('&', '&amp;')
@@ -79,9 +80,9 @@ class VariableNode extends TemplateNode {
 
 class CommentNode extends TemplateNode {
   final String content;
-  
+
   CommentNode(this.content);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     return '';
@@ -90,9 +91,9 @@ class CommentNode extends TemplateNode {
 
 class IfNode extends TemplateNode {
   final List<IfBranch> branches;
-  
+
   IfNode(this.branches);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     for (final branch in branches) {
@@ -100,14 +101,15 @@ class IfNode extends TemplateNode {
         return await NodeList(branch.nodes).render(context);
       }
     }
-    
+
     return '';
   }
-  
-  Future<bool> _evaluateCondition(String condition, TemplateContext context) async {
+
+  Future<bool> _evaluateCondition(
+      String condition, TemplateContext context) async {
     if (condition == 'true') return true;
     if (condition == 'false') return false;
-    
+
     if (condition.contains(' and ')) {
       final parts = condition.split(' and ');
       for (final part in parts) {
@@ -117,7 +119,7 @@ class IfNode extends TemplateNode {
       }
       return true;
     }
-    
+
     if (condition.contains(' or ')) {
       final parts = condition.split(' or ');
       for (final part in parts) {
@@ -127,12 +129,12 @@ class IfNode extends TemplateNode {
       }
       return false;
     }
-    
+
     if (condition.startsWith('not ')) {
       final innerCondition = condition.substring(4).trim();
       return !await _evaluateCondition(innerCondition, context);
     }
-    
+
     if (condition.contains(' == ')) {
       final parts = condition.split(' == ');
       if (parts.length == 2) {
@@ -141,7 +143,7 @@ class IfNode extends TemplateNode {
         return left == right;
       }
     }
-    
+
     if (condition.contains(' != ')) {
       final parts = condition.split(' != ');
       if (parts.length == 2) {
@@ -150,7 +152,7 @@ class IfNode extends TemplateNode {
         return left != right;
       }
     }
-    
+
     if (condition.contains(' < ')) {
       final parts = condition.split(' < ');
       if (parts.length == 2) {
@@ -159,7 +161,7 @@ class IfNode extends TemplateNode {
         return (left is num && right is num) ? left < right : false;
       }
     }
-    
+
     if (condition.contains(' > ')) {
       final parts = condition.split(' > ');
       if (parts.length == 2) {
@@ -168,30 +170,30 @@ class IfNode extends TemplateNode {
         return (left is num && right is num) ? left > right : false;
       }
     }
-    
+
     final value = _resolveValue(condition, context);
     return _isTruthy(value);
   }
-  
+
   dynamic _resolveValue(String expression, TemplateContext context) {
     if (expression.startsWith('"') && expression.endsWith('"')) {
       return expression.substring(1, expression.length - 1);
     }
-    
+
     if (expression.startsWith("'") && expression.endsWith("'")) {
       return expression.substring(1, expression.length - 1);
     }
-    
+
     final num = int.tryParse(expression) ?? double.tryParse(expression);
     if (num != null) return num;
-    
+
     if (expression == 'True' || expression == 'true') return true;
     if (expression == 'False' || expression == 'false') return false;
     if (expression == 'None' || expression == 'null') return null;
-    
+
     return ContextVariable.parse(expression).resolve(context);
   }
-  
+
   bool _isTruthy(dynamic value) {
     if (value == null) return false;
     if (value is bool) return value;
@@ -208,19 +210,19 @@ class ForNode extends TemplateNode {
   final String iterable;
   final List<TemplateNode> nodes;
   final List<TemplateNode> emptyNodes;
-  
+
   ForNode(this.variable, this.iterable, this.nodes, this.emptyNodes);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final items = ContextVariable.parse(iterable).resolve(context);
-    
+
     if (items == null || (items is List && items.isEmpty)) {
       return await NodeList(emptyNodes).render(context);
     }
-    
+
     final buffer = StringBuffer();
-    
+
     if (items is List) {
       for (int i = 0; i < items.length; i++) {
         context.push({
@@ -234,10 +236,10 @@ class ForNode extends TemplateNode {
             'parentloop': context['forloop'],
           }
         });
-        
+
         final result = await NodeList(nodes).render(context);
         buffer.write(result);
-        
+
         context.pop();
       }
     } else if (items is Map) {
@@ -254,14 +256,14 @@ class ForNode extends TemplateNode {
             'parentloop': context['forloop'],
           }
         });
-        
+
         final result = await NodeList(nodes).render(context);
         buffer.write(result);
-        
+
         context.pop();
       }
     }
-    
+
     return buffer.toString();
   }
 }
@@ -270,15 +272,15 @@ class WithNode extends TemplateNode {
   final String expression;
   final String variable;
   final List<TemplateNode> nodes;
-  
+
   WithNode(this.expression, this.variable, this.nodes);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final value = ContextVariable.parse(expression).resolve(context);
-    
+
     context.push({variable: value});
-    
+
     try {
       return await NodeList(nodes).render(context);
     } finally {
@@ -290,22 +292,23 @@ class WithNode extends TemplateNode {
 class IncludeNode extends TemplateNode {
   final String templateName;
   final Map<String, String> withContext;
-  
+
   IncludeNode(this.templateName, this.withContext);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     try {
       final template = TemplateEngine.instance.getTemplate(templateName);
-      
+
       if (withContext.isNotEmpty) {
         final contextData = <String, dynamic>{};
         for (final entry in withContext.entries) {
-          contextData[entry.key] = ContextVariable.parse(entry.value).resolve(context);
+          contextData[entry.key] =
+              ContextVariable.parse(entry.value).resolve(context);
         }
-        
+
         context.push(contextData);
-        
+
         try {
           return await template.render(context);
         } finally {
@@ -315,28 +318,30 @@ class IncludeNode extends TemplateNode {
         return await template.render(context);
       }
     } catch (e) {
-      throw TemplateIncludeException(templateName, 'Error including template: $e');
+      throw TemplateIncludeException(
+          templateName, 'Error including template: $e');
     }
   }
 }
 
 class ExtendsNode extends TemplateNode {
   final String parentTemplateName;
-  
+
   ExtendsNode(this.parentTemplateName);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
-    throw TemplateInheritanceException('Extends node should be handled by template inheritance system');
+    throw TemplateInheritanceException(
+        'Extends node should be handled by template inheritance system');
   }
 }
 
 class BlockNode extends TemplateNode {
   final String blockName;
   final List<TemplateNode> nodes;
-  
+
   BlockNode(this.blockName, this.nodes);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     return await NodeList(nodes).render(context);
@@ -357,13 +362,14 @@ class CsrfTokenNode extends TemplateNode {
 class UrlNode extends TemplateNode {
   final String urlName;
   final List<String> args;
-  
+
   UrlNode(this.urlName, this.args);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
-    final resolvedArgs = args.map((arg) => ContextVariable.parse(arg).resolve(context)).toList();
-    
+    final resolvedArgs =
+        args.map((arg) => ContextVariable.parse(arg).resolve(context)).toList();
+
     final urlResolver = context['url_resolver'];
     if (urlResolver != null) {
       try {
@@ -372,16 +378,16 @@ class UrlNode extends TemplateNode {
         return '';
       }
     }
-    
+
     return '';
   }
 }
 
 class StaticNode extends TemplateNode {
   final String filePath;
-  
+
   StaticNode(this.filePath);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final staticUrl = context['STATIC_URL'] ?? '/static/';
@@ -391,9 +397,9 @@ class StaticNode extends TemplateNode {
 
 class LoadNode extends TemplateNode {
   final String libraryName;
-  
+
   LoadNode(this.libraryName);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     return '';
@@ -402,9 +408,9 @@ class LoadNode extends TemplateNode {
 
 class SpacelessNode extends TemplateNode {
   final List<TemplateNode> nodes;
-  
+
   SpacelessNode(this.nodes);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final content = await NodeList(nodes).render(context);
@@ -414,34 +420,34 @@ class SpacelessNode extends TemplateNode {
 
 class VerbatimNode extends TemplateNode {
   final List<TemplateNode> nodes;
-  
+
   VerbatimNode(this.nodes);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final buffer = StringBuffer();
-    
+
     for (final node in nodes) {
       if (node is TextNode) {
         buffer.write(node.text);
       }
     }
-    
+
     return buffer.toString();
   }
 }
 
 class NowNode extends TemplateNode {
   final String format;
-  
+
   NowNode(this.format);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final now = DateTime.now();
     return _formatDateTime(now, format);
   }
-  
+
   String _formatDateTime(DateTime date, String format) {
     return format
         .replaceAll('yyyy', date.year.toString())
@@ -457,32 +463,37 @@ class RegroupNode extends TemplateNode {
   final String list;
   final String attribute;
   final String variable;
-  
+
   RegroupNode(this.list, this.attribute, this.variable);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final items = ContextVariable.parse(list).resolve(context);
-    
+
     if (items is! List) {
       context[variable] = [];
       return '';
     }
-    
+
     final groups = <String, List<dynamic>>{};
-    
+
     for (final item in items) {
-      final key = ContextVariable.parse('$item.$attribute').resolve(context)?.toString() ?? '';
+      final key = ContextVariable.parse('$item.$attribute')
+              .resolve(context)
+              ?.toString() ??
+          '';
       groups.putIfAbsent(key, () => []).add(item);
     }
-    
-    final regrouped = groups.entries.map((entry) => {
-      'grouper': entry.key,
-      'list': entry.value,
-    }).toList();
-    
+
+    final regrouped = groups.entries
+        .map((entry) => {
+              'grouper': entry.key,
+              'list': entry.value,
+            })
+        .toList();
+
     context[variable] = regrouped;
-    
+
     return '';
   }
 }
@@ -490,9 +501,9 @@ class RegroupNode extends TemplateNode {
 class CycleNode extends TemplateNode {
   final List<String> values;
   static final Map<String, int> _counters = {};
-  
+
   CycleNode(this.values);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final key = values.join('|');
@@ -505,9 +516,9 @@ class CycleNode extends TemplateNode {
 
 class FirstOfNode extends TemplateNode {
   final List<String> variables;
-  
+
   FirstOfNode(this.variables);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     for (final variable in variables) {
@@ -524,28 +535,30 @@ class IfChangedNode extends TemplateNode {
   final List<String> variables;
   final List<TemplateNode> nodes;
   static final Map<String, dynamic> _lastValues = {};
-  
+
   IfChangedNode(this.variables, this.nodes);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final key = variables.join('|');
-    final currentValues = variables.map((v) => ContextVariable.parse(v).resolve(context)).toList();
-    
+    final currentValues = variables
+        .map((v) => ContextVariable.parse(v).resolve(context))
+        .toList();
+
     if (_lastValues[key] != currentValues.join('|')) {
       _lastValues[key] = currentValues.join('|');
       return await NodeList(nodes).render(context);
     }
-    
+
     return '';
   }
 }
 
 class TemplateTagNode extends TemplateNode {
   final String tagName;
-  
+
   TemplateTagNode(this.tagName);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     switch (tagName) {
@@ -575,20 +588,23 @@ class WidthRatioNode extends TemplateNode {
   final String current;
   final String max;
   final String scale;
-  
+
   WidthRatioNode(this.current, this.max, this.scale);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final currentValue = ContextVariable.parse(current).resolve(context);
     final maxValue = ContextVariable.parse(max).resolve(context);
     final scaleValue = ContextVariable.parse(scale).resolve(context);
-    
-    if (currentValue is num && maxValue is num && scaleValue is num && maxValue != 0) {
+
+    if (currentValue is num &&
+        maxValue is num &&
+        scaleValue is num &&
+        maxValue != 0) {
       final ratio = (currentValue / maxValue * scaleValue).round();
       return ratio.toString();
     }
-    
+
     return '0';
   }
 }
@@ -596,16 +612,16 @@ class WidthRatioNode extends TemplateNode {
 class FilterNode extends TemplateNode {
   final String filters;
   final List<TemplateNode> nodes;
-  
+
   FilterNode(this.filters, this.nodes);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final content = await NodeList(nodes).render(context);
     final variable = ContextVariable.parse('content|$filters');
-    
+
     context.push({'content': content});
-    
+
     try {
       return variable.resolve(context)?.toString() ?? '';
     } finally {
@@ -617,14 +633,14 @@ class FilterNode extends TemplateNode {
 class AutoEscapeNode extends TemplateNode {
   final bool autoEscape;
   final List<TemplateNode> nodes;
-  
+
   AutoEscapeNode(this.autoEscape, this.nodes);
-  
+
   @override
   Future<String> render(TemplateContext context) async {
     final oldAutoEscape = context.autoEscape;
     context.setAutoEscape(autoEscape);
-    
+
     try {
       return await NodeList(nodes).render(context);
     } finally {
@@ -632,4 +648,3 @@ class AutoEscapeNode extends TemplateNode {
     }
   }
 }
-

@@ -80,7 +80,8 @@ class MiddlewareChain {
     } catch (e) {
       if (e is Exception) {
         for (final middleware in _middlewares) {
-          final exceptionResponse = await middleware.processException(request, e);
+          final exceptionResponse =
+              await middleware.processException(request, e);
           if (exceptionResponse != null) {
             return await _applyResponseMiddlewares(request, exceptionResponse);
           }
@@ -138,8 +139,7 @@ class MiddlewareChain {
 }
 
 class MiddlewareException extends DartangoException {
-  MiddlewareException(String message, {Exception? cause})
-      : super(message);
+  MiddlewareException(String message, {Exception? cause}) : super(message);
 }
 
 class MiddlewareNotCallable extends MiddlewareException {

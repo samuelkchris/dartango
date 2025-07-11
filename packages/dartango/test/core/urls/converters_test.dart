@@ -122,7 +122,10 @@ void main() {
 
     test('should have correct name and pattern', () {
       expect(converter.name, equals('uuid'));
-      expect(converter.pattern, equals(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'));
+      expect(
+          converter.pattern,
+          equals(
+              r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'));
     });
 
     test('should convert valid UUID', () {
@@ -139,7 +142,8 @@ void main() {
 
     test('should throw on invalid UUID', () {
       expect(() => converter.convert('invalid-uuid'), throwsArgumentError);
-      expect(() => converter.convert('123e4567-e89b-12d3-a456'), throwsArgumentError);
+      expect(() => converter.convert('123e4567-e89b-12d3-a456'),
+          throwsArgumentError);
     });
 
     test('should reverse valid UUID', () {
@@ -363,7 +367,8 @@ void main() {
 
     test('should have correct name and pattern', () {
       expect(converter.name, equals('email'));
-      expect(converter.pattern, equals(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'));
+      expect(converter.pattern,
+          equals(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'));
     });
 
     test('should convert valid email', () {

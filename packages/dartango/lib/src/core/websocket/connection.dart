@@ -11,17 +11,17 @@ class WebSocketConnection {
   final Map<String, dynamic> metadata;
   final StreamController<WebSocketMessage> _messageController;
   final List<String> _subscriptions = [];
-  
+
   bool _isAuthenticated = false;
   dynamic _user;
-  
+
   WebSocketConnection({
     required this.id,
     required this.socket,
     required this.connectedAt,
     Map<String, dynamic>? metadata,
-  }) : metadata = metadata ?? {},
-       _messageController = StreamController<WebSocketMessage>.broadcast();
+  })  : metadata = metadata ?? {},
+        _messageController = StreamController<WebSocketMessage>.broadcast();
 
   Stream<WebSocketMessage> get messages => _messageController.stream;
   List<String> get subscriptions => List.unmodifiable(_subscriptions);
@@ -133,14 +133,17 @@ class WebSocketManager {
 
   WebSocketManager()
       : _messageController = StreamController<WebSocketMessage>.broadcast(),
-        _connectionController = StreamController<WebSocketConnection>.broadcast(),
-        _disconnectionController = StreamController<WebSocketConnection>.broadcast();
+        _connectionController =
+            StreamController<WebSocketConnection>.broadcast(),
+        _disconnectionController =
+            StreamController<WebSocketConnection>.broadcast();
 
   Stream<WebSocketMessage> get messages => _messageController.stream;
   Stream<WebSocketConnection> get connections => _connectionController.stream;
-  Stream<WebSocketConnection> get disconnections => _disconnectionController.stream;
+  Stream<WebSocketConnection> get disconnections =>
+      _disconnectionController.stream;
 
-  List<WebSocketConnection> get activeConnections => 
+  List<WebSocketConnection> get activeConnections =>
       _connections.values.where((conn) => conn.isConnected).toList();
 
   int get connectionCount => _connections.length;
@@ -185,9 +188,9 @@ class WebSocketManager {
     try {
       final json = jsonDecode(data as String) as Map<String, dynamic>;
       final message = WebSocketMessage.fromJson(json, connection);
-      
+
       _messageController.add(message);
-      
+
       // Handle built-in message types
       switch (message.type) {
         case 'subscribe':
@@ -213,7 +216,7 @@ class WebSocketManager {
 
   void _handleDisconnection(WebSocketConnection connection) {
     _connections.remove(connection.id);
-    
+
     // Remove from all channels
     for (final channel in connection.subscriptions) {
       _channels[channel]?.remove(connection.id);
@@ -221,7 +224,7 @@ class WebSocketManager {
         _channels.remove(channel);
       }
     }
-    
+
     _disconnectionController.add(connection);
   }
 
@@ -256,7 +259,8 @@ class WebSocketManager {
     }
   }
 
-  void broadcastToChannel(String channel, String type, dynamic data, {String? excludeConnectionId}) {
+  void broadcastToChannel(String channel, String type, dynamic data,
+      {String? excludeConnectionId}) {
     final connectionIds = _channels[channel] ?? <String>{};
     final message = {
       'type': type,
@@ -267,7 +271,9 @@ class WebSocketManager {
 
     for (final connectionId in connectionIds) {
       final connection = _connections[connectionId];
-      if (connection != null && connection.isConnected && connection.id != excludeConnectionId) {
+      if (connection != null &&
+          connection.isConnected &&
+          connection.id != excludeConnectionId) {
         connection.send(message);
       }
     }
@@ -323,8 +329,8 @@ class WebSocketManager {
       'total_connections': _connections.length,
       'active_connections': activeConnections.length,
       'channels': _channels.length,
-      'channel_subscriptions': _channels.map((channel, connections) => 
-          MapEntry(channel, connections.length)),
+      'channel_subscriptions': _channels
+          .map((channel, connections) => MapEntry(channel, connections.length)),
     };
   }
 
@@ -364,7 +370,8 @@ class WebSocketChannel {
   }
 
   void broadcast(String type, dynamic data, {String? excludeConnectionId}) {
-    manager.broadcastToChannel(name, type, data, excludeConnectionId: excludeConnectionId);
+    manager.broadcastToChannel(name, type, data,
+        excludeConnectionId: excludeConnectionId);
   }
 
   List<WebSocketConnection> get connections {
@@ -392,7 +399,8 @@ class WebSocketChannel {
 }
 
 mixin WebSocketAuthMixin {
-  Future<bool> authenticate(WebSocketConnection connection, Map<String, dynamic> credentials) async {
+  Future<bool> authenticate(
+      WebSocketConnection connection, Map<String, dynamic> credentials) async {
     // Implement your authentication logic here
     return false;
   }

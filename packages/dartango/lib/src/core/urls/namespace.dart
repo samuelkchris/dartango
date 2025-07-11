@@ -3,20 +3,20 @@ import 'resolver.dart';
 class NamespaceResolver extends URLResolver {
   final String? _appName;
   final String? _namespace;
-  
+
   NamespaceResolver({
     required List<URLPattern> urlPatterns,
     String? appName,
     String? namespace,
     bool enableCaching = true,
-  }) : _appName = appName,
-       _namespace = namespace,
-       super(
-         urlPatterns: urlPatterns,
-         appName: appName,
-         namespace: namespace,
-         enableCaching: enableCaching,
-       );
+  })  : _appName = appName,
+        _namespace = namespace,
+        super(
+          urlPatterns: urlPatterns,
+          appName: appName,
+          namespace: namespace,
+          enableCaching: enableCaching,
+        );
 
   @override
   ResolverMatch? resolve(String path) {
@@ -39,7 +39,8 @@ class NamespaceResolver extends URLResolver {
   }
 
   @override
-  String? reverse(String viewName, {Map<String, String>? kwargs, List<String>? args}) {
+  String? reverse(String viewName,
+      {Map<String, String>? kwargs, List<String>? args}) {
     String targetViewName = viewName;
     List<String> expectedNamespaces = [];
 
@@ -76,7 +77,16 @@ class IncludeNamespace extends URLPattern {
     required this.prefix,
     required this.resolver,
     this.name,
-    this.allowedMethods = const ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE'],
+    this.allowedMethods = const [
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+      'PATCH',
+      'HEAD',
+      'OPTIONS',
+      'TRACE'
+    ],
   });
 
   @override
@@ -103,7 +113,10 @@ class IncludeNamespace extends URLPattern {
   }
 
   @override
-  String? reverse(String viewName, {Map<String, String>? kwargs, List<String>? args, List<String>? namespaces}) {
+  String? reverse(String viewName,
+      {Map<String, String>? kwargs,
+      List<String>? args,
+      List<String>? namespaces}) {
     final url = resolver.reverse(viewName, kwargs: kwargs, args: args);
     if (url == null) return null;
 
@@ -111,7 +124,8 @@ class IncludeNamespace extends URLPattern {
   }
 }
 
-URLPattern includeNamespace(String prefix, List<URLPattern> patterns, {String? namespace, String? appName}) {
+URLPattern includeNamespace(String prefix, List<URLPattern> patterns,
+    {String? namespace, String? appName}) {
   final resolver = NamespaceResolver(
     urlPatterns: patterns,
     namespace: namespace,
@@ -124,7 +138,7 @@ class URLNamespace {
   final String name;
   final List<URLPattern> patterns;
   final String? appName;
-  
+
   const URLNamespace({
     required this.name,
     required this.patterns,
@@ -135,7 +149,7 @@ class URLNamespace {
 class AppNamespace {
   final String name;
   final List<URLPattern> patterns;
-  
+
   const AppNamespace({
     required this.name,
     required this.patterns,
@@ -145,33 +159,34 @@ class AppNamespace {
 class NamespaceManager {
   final Map<String, URLNamespace> _namespaces = {};
   final Map<String, AppNamespace> _appNamespaces = {};
-  
-  void registerNamespace(String name, List<URLPattern> patterns, {String? appName}) {
+
+  void registerNamespace(String name, List<URLPattern> patterns,
+      {String? appName}) {
     _namespaces[name] = URLNamespace(
       name: name,
       patterns: patterns,
       appName: appName,
     );
   }
-  
+
   void registerApp(String name, List<URLPattern> patterns) {
     _appNamespaces[name] = AppNamespace(
       name: name,
       patterns: patterns,
     );
   }
-  
+
   URLNamespace? getNamespace(String name) {
     return _namespaces[name];
   }
-  
+
   AppNamespace? getApp(String name) {
     return _appNamespaces[name];
   }
-  
+
   List<String> get namespaceNames => _namespaces.keys.toList();
   List<String> get appNames => _appNamespaces.keys.toList();
-  
+
   void clear() {
     _namespaces.clear();
     _appNamespaces.clear();
@@ -180,30 +195,32 @@ class NamespaceManager {
 
 final namespaceManager = NamespaceManager();
 
-String reverseNamespace(String namespacedView, {Map<String, String>? kwargs, List<String>? args}) {
+String reverseNamespace(String namespacedView,
+    {Map<String, String>? kwargs, List<String>? args}) {
   final parts = namespacedView.split(':');
   if (parts.length < 2) {
-    throw ArgumentError('Namespaced view must contain at least one colon: $namespacedView');
+    throw ArgumentError(
+        'Namespaced view must contain at least one colon: $namespacedView');
   }
-  
+
   final namespacePath = parts.take(parts.length - 1).join(':');
   final viewName = parts.last;
-  
+
   final namespace = namespaceManager.getNamespace(namespacePath);
   if (namespace == null) {
     throw NoReverseMatch('No namespace found for: $namespacePath');
   }
-  
+
   final resolver = NamespaceResolver(
     urlPatterns: namespace.patterns,
     namespace: namespace.name,
     appName: namespace.appName,
   );
-  
+
   final url = resolver.reverse(viewName, kwargs: kwargs, args: args);
   if (url == null) {
     throw NoReverseMatch('No reverse match found for: $namespacedView');
   }
-  
+
   return url;
 }

@@ -116,7 +116,8 @@ class EmailAttachment {
     );
   }
 
-  factory EmailAttachment.fromFile(File file, {String? contentType, String? contentId}) {
+  factory EmailAttachment.fromFile(File file,
+      {String? contentType, String? contentId}) {
     return EmailAttachment(
       filename: file.path.split('/').last,
       bytes: file.readAsBytesSync(),
@@ -187,41 +188,42 @@ class SmtpEmailBackend implements EmailBackend {
       // Create a simple SMTP implementation
       final socket = await Socket.connect(host, port);
       _socket = socket;
-      
+
       // Send SMTP commands
       await _sendCommand(socket, 'EHLO localhost');
-      
+
       if (username != null && password != null) {
         await _sendCommand(socket, 'AUTH LOGIN');
         await _sendCommand(socket, base64Encode(utf8.encode(username!)));
         await _sendCommand(socket, base64Encode(utf8.encode(password!)));
       }
-      
+
       await _sendCommand(socket, 'MAIL FROM:<${message.from}>');
-      
+
       for (final recipient in message.to) {
         await _sendCommand(socket, 'RCPT TO:<$recipient>');
       }
-      
+
       for (final recipient in message.cc) {
         await _sendCommand(socket, 'RCPT TO:<$recipient>');
       }
-      
+
       for (final recipient in message.bcc) {
         await _sendCommand(socket, 'RCPT TO:<$recipient>');
       }
-      
+
       await _sendCommand(socket, 'DATA');
-      
+
       // Build email content
       final emailContent = _buildEmailContent(message);
       socket.add(utf8.encode(emailContent));
       socket.add(utf8.encode('\r\n.\r\n'));
-      
+
       await _sendCommand(socket, 'QUIT');
       await socket.close();
-      
-      return EmailResult.success('smtp-${DateTime.now().millisecondsSinceEpoch}');
+
+      return EmailResult.success(
+          'smtp-${DateTime.now().millisecondsSinceEpoch}');
     } catch (e) {
       return EmailResult.error(e.toString());
     }
@@ -234,7 +236,7 @@ class SmtpEmailBackend implements EmailBackend {
 
   String _buildEmailContent(EmailMessage message) {
     final buffer = StringBuffer();
-    
+
     // Headers
     buffer.writeln('From: ${message.from}');
     buffer.writeln('To: ${message.to.join(', ')}');
@@ -243,28 +245,29 @@ class SmtpEmailBackend implements EmailBackend {
     }
     buffer.writeln('Subject: ${message.subject}');
     buffer.writeln('Date: ${DateTime.now().toUtc().toString()}');
-    buffer.writeln('Content-Type: ${message.isHtml ? 'text/html' : 'text/plain'}; charset=utf-8');
-    
+    buffer.writeln(
+        'Content-Type: ${message.isHtml ? 'text/html' : 'text/plain'}; charset=utf-8');
+
     // Custom headers
     for (final header in message.headers.entries) {
       buffer.writeln('${header.key}: ${header.value}');
     }
-    
+
     buffer.writeln();
     buffer.writeln(message.body);
-    
+
     return buffer.toString();
   }
 
   @override
   Future<List<EmailResult>> sendEmails(List<EmailMessage> messages) async {
     final results = <EmailResult>[];
-    
+
     for (final message in messages) {
       final result = await sendEmail(message);
       results.add(result);
     }
-    
+
     return results;
   }
 
@@ -284,43 +287,46 @@ class ConsoleEmailBackend implements EmailBackend {
   @override
   Future<EmailResult> sendEmail(EmailMessage message) async {
     final divider = '=' * 70;
-    
+
     output.writeln(divider);
     output.writeln('Email Message');
     output.writeln(divider);
     output.writeln('Subject: ${message.subject}');
     output.writeln('From: ${message.from}');
     output.writeln('To: ${message.to.join(', ')}');
-    
+
     if (message.cc.isNotEmpty) {
       output.writeln('CC: ${message.cc.join(', ')}');
     }
-    
+
     if (message.bcc.isNotEmpty) {
       output.writeln('BCC: ${message.bcc.join(', ')}');
     }
-    
+
     if (message.attachments.isNotEmpty) {
-      output.writeln('Attachments: ${message.attachments.map((a) => a.filename).join(', ')}');
+      output.writeln(
+          'Attachments: ${message.attachments.map((a) => a.filename).join(', ')}');
     }
-    
-    output.writeln('Content-Type: ${message.isHtml ? 'text/html' : 'text/plain'}');
+
+    output.writeln(
+        'Content-Type: ${message.isHtml ? 'text/html' : 'text/plain'}');
     output.writeln('');
     output.writeln(message.body);
     output.writeln(divider);
-    
-    return EmailResult.success('console-${DateTime.now().millisecondsSinceEpoch}');
+
+    return EmailResult.success(
+        'console-${DateTime.now().millisecondsSinceEpoch}');
   }
 
   @override
   Future<List<EmailResult>> sendEmails(List<EmailMessage> messages) async {
     final results = <EmailResult>[];
-    
+
     for (final message in messages) {
       final result = await sendEmail(message);
       results.add(result);
     }
-    
+
     return results;
   }
 
@@ -350,7 +356,7 @@ class FileEmailBackend implements EmailBackend {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final filename = '$filePrefix$timestamp.json';
       final file = File('$directory/$filename');
-      
+
       final emailData = {
         'timestamp': DateTime.now().toIso8601String(),
         'message': message.toJson(),
@@ -366,12 +372,12 @@ class FileEmailBackend implements EmailBackend {
   @override
   Future<List<EmailResult>> sendEmails(List<EmailMessage> messages) async {
     final results = <EmailResult>[];
-    
+
     for (final message in messages) {
       final result = await sendEmail(message);
       results.add(result);
     }
-    
+
     return results;
   }
 
@@ -395,12 +401,12 @@ class InMemoryEmailBackend implements EmailBackend {
   @override
   Future<List<EmailResult>> sendEmails(List<EmailMessage> messages) async {
     final results = <EmailResult>[];
-    
+
     for (final message in messages) {
       final result = await sendEmail(message);
       results.add(result);
     }
-    
+
     return results;
   }
 

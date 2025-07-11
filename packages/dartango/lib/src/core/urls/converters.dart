@@ -3,15 +3,15 @@ import 'dart:convert';
 abstract class PathConverter {
   String get name;
   String get pattern;
-  
+
   Object convert(String value);
   String reverse(Object value);
-  
+
   static PathConverter getConverter(String name) {
     if (_customConverters.containsKey(name)) {
       return _customConverters[name]!;
     }
-    
+
     switch (name) {
       case 'int':
         return IntConverter();
@@ -46,26 +46,26 @@ abstract class PathConverter {
         return StringConverter();
     }
   }
-  
+
   static void registerConverter(String name, PathConverter converter) {
     _customConverters[name] = converter;
   }
-  
+
   static final Map<String, PathConverter> _customConverters = {};
 }
 
 class StringConverter extends PathConverter {
   @override
   String get name => 'str';
-  
+
   @override
   String get pattern => r'[^/]+';
-  
+
   @override
   String convert(String value) {
     return value;
   }
-  
+
   @override
   String reverse(Object value) {
     return value.toString();
@@ -75,10 +75,10 @@ class StringConverter extends PathConverter {
 class IntConverter extends PathConverter {
   @override
   String get name => 'int';
-  
+
   @override
   String get pattern => r'[0-9]+';
-  
+
   @override
   int convert(String value) {
     if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
@@ -90,7 +90,7 @@ class IntConverter extends PathConverter {
     }
     return parsed;
   }
-  
+
   @override
   String reverse(Object value) {
     if (value is! int) {
@@ -103,10 +103,10 @@ class IntConverter extends PathConverter {
 class SlugConverter extends PathConverter {
   @override
   String get name => 'slug';
-  
+
   @override
   String get pattern => r'[-a-zA-Z0-9_]+';
-  
+
   @override
   String convert(String value) {
     if (!RegExp(r'^[-a-zA-Z0-9_]+$').hasMatch(value)) {
@@ -114,7 +114,7 @@ class SlugConverter extends PathConverter {
     }
     return value;
   }
-  
+
   @override
   String reverse(Object value) {
     final str = value.toString();
@@ -128,23 +128,28 @@ class SlugConverter extends PathConverter {
 class UuidConverter extends PathConverter {
   @override
   String get name => 'uuid';
-  
+
   @override
-  String get pattern => r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-  
+  String get pattern =>
+      r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+
   @override
   String convert(String value) {
     final uuid = value.toLowerCase();
-    if (!RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$').hasMatch(uuid)) {
+    if (!RegExp(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+        .hasMatch(uuid)) {
       throw ArgumentError('Invalid UUID value: $value');
     }
     return uuid;
   }
-  
+
   @override
   String reverse(Object value) {
     final str = value.toString().toLowerCase();
-    if (!RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$').hasMatch(str)) {
+    if (!RegExp(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+        .hasMatch(str)) {
       throw ArgumentError('Invalid UUID value: $str');
     }
     return str;
@@ -154,15 +159,15 @@ class UuidConverter extends PathConverter {
 class PathPathConverter extends PathConverter {
   @override
   String get name => 'path';
-  
+
   @override
   String get pattern => r'.+';
-  
+
   @override
   String convert(String value) {
     return value;
   }
-  
+
   @override
   String reverse(Object value) {
     return value.toString();
@@ -172,10 +177,10 @@ class PathPathConverter extends PathConverter {
 class FloatConverter extends PathConverter {
   @override
   String get name => 'float';
-  
+
   @override
   String get pattern => r'[0-9]+(?:\.[0-9]+)?';
-  
+
   @override
   double convert(String value) {
     final parsed = double.tryParse(value);
@@ -184,7 +189,7 @@ class FloatConverter extends PathConverter {
     }
     return parsed;
   }
-  
+
   @override
   String reverse(Object value) {
     if (value is! num) {
@@ -197,10 +202,10 @@ class FloatConverter extends PathConverter {
 class DateConverter extends PathConverter {
   @override
   String get name => 'date';
-  
+
   @override
   String get pattern => r'[0-9]{4}-[0-9]{2}-[0-9]{2}';
-  
+
   @override
   DateTime convert(String value) {
     try {
@@ -209,7 +214,7 @@ class DateConverter extends PathConverter {
       throw ArgumentError('Invalid date value: $value');
     }
   }
-  
+
   @override
   String reverse(Object value) {
     if (value is! DateTime) {
@@ -222,10 +227,10 @@ class DateConverter extends PathConverter {
 class BoolConverter extends PathConverter {
   @override
   String get name => 'bool';
-  
+
   @override
   String get pattern => r'(?:true|false|1|0)';
-  
+
   @override
   bool convert(String value) {
     switch (value.toLowerCase()) {
@@ -239,7 +244,7 @@ class BoolConverter extends PathConverter {
         throw ArgumentError('Invalid boolean value: $value');
     }
   }
-  
+
   @override
   String reverse(Object value) {
     if (value is! bool) {
@@ -252,10 +257,10 @@ class BoolConverter extends PathConverter {
 class JsonConverter extends PathConverter {
   @override
   String get name => 'json';
-  
+
   @override
   String get pattern => r'[^/]+';
-  
+
   @override
   Object convert(String value) {
     try {
@@ -264,7 +269,7 @@ class JsonConverter extends PathConverter {
       throw ArgumentError('Invalid JSON value: $value');
     }
   }
-  
+
   @override
   String reverse(Object value) {
     try {
@@ -278,10 +283,10 @@ class JsonConverter extends PathConverter {
 class Base64Converter extends PathConverter {
   @override
   String get name => 'base64';
-  
+
   @override
   String get pattern => r'[A-Za-z0-9+/]+=*';
-  
+
   @override
   String convert(String value) {
     try {
@@ -291,7 +296,7 @@ class Base64Converter extends PathConverter {
       throw ArgumentError('Invalid base64 value: $value');
     }
   }
-  
+
   @override
   String reverse(Object value) {
     try {
@@ -306,10 +311,10 @@ class Base64Converter extends PathConverter {
 class HexConverter extends PathConverter {
   @override
   String get name => 'hex';
-  
+
   @override
   String get pattern => r'[0-9a-fA-F]+';
-  
+
   @override
   int convert(String value) {
     try {
@@ -318,7 +323,7 @@ class HexConverter extends PathConverter {
       throw ArgumentError('Invalid hex value: $value');
     }
   }
-  
+
   @override
   String reverse(Object value) {
     if (value is! int) {
@@ -331,10 +336,10 @@ class HexConverter extends PathConverter {
 class OctalConverter extends PathConverter {
   @override
   String get name => 'octal';
-  
+
   @override
   String get pattern => r'[0-7]+';
-  
+
   @override
   int convert(String value) {
     try {
@@ -343,7 +348,7 @@ class OctalConverter extends PathConverter {
       throw ArgumentError('Invalid octal value: $value');
     }
   }
-  
+
   @override
   String reverse(Object value) {
     if (value is! int) {
@@ -356,10 +361,10 @@ class OctalConverter extends PathConverter {
 class AlphaConverter extends PathConverter {
   @override
   String get name => 'alpha';
-  
+
   @override
   String get pattern => r'[a-zA-Z]+';
-  
+
   @override
   String convert(String value) {
     if (!RegExp(r'^[a-zA-Z]+$').hasMatch(value)) {
@@ -367,7 +372,7 @@ class AlphaConverter extends PathConverter {
     }
     return value;
   }
-  
+
   @override
   String reverse(Object value) {
     final str = value.toString();
@@ -381,10 +386,10 @@ class AlphaConverter extends PathConverter {
 class AlphaNumericConverter extends PathConverter {
   @override
   String get name => 'alphanum';
-  
+
   @override
   String get pattern => r'[a-zA-Z0-9]+';
-  
+
   @override
   String convert(String value) {
     if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
@@ -392,7 +397,7 @@ class AlphaNumericConverter extends PathConverter {
     }
     return value;
   }
-  
+
   @override
   String reverse(Object value) {
     final str = value.toString();
@@ -406,22 +411,24 @@ class AlphaNumericConverter extends PathConverter {
 class EmailConverter extends PathConverter {
   @override
   String get name => 'email';
-  
+
   @override
   String get pattern => r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}';
-  
+
   @override
   String convert(String value) {
-    if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value)) {
+    if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        .hasMatch(value)) {
       throw ArgumentError('Invalid email value: $value');
     }
     return value;
   }
-  
+
   @override
   String reverse(Object value) {
     final str = value.toString();
-    if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(str)) {
+    if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        .hasMatch(str)) {
       throw ArgumentError('Invalid email value: $str');
     }
     return str;

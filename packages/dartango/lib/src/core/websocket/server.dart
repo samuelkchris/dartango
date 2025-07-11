@@ -9,12 +9,12 @@ class WebSocketServer {
   final WebSocketManager manager;
   final List<WebSocketMiddleware> middlewares;
   final Map<String, WebSocketChannel> channels = {};
-  
+
   WebSocketServer({
     WebSocketManager? manager,
     List<WebSocketMiddleware>? middlewares,
-  }) : manager = manager ?? WebSocketManager(),
-       middlewares = middlewares ?? [];
+  })  : manager = manager ?? WebSocketManager(),
+        middlewares = middlewares ?? [];
 
   Future<HttpResponse> handleUpgrade(HttpRequest request) async {
     // Check if request is a WebSocket upgrade request
@@ -27,12 +27,14 @@ class WebSocketServer {
       for (final middleware in middlewares) {
         final result = await middleware.canUpgrade(request);
         if (!result.allowed) {
-          return HttpResponse.forbidden(result.reason ?? 'WebSocket upgrade denied');
+          return HttpResponse.forbidden(
+              result.reason ?? 'WebSocket upgrade denied');
         }
       }
 
       // Upgrade the connection
-      final httpRequest = request.shelfRequest.context['shelf.io.http_request'] as io.HttpRequest;
+      final httpRequest = request.shelfRequest.context['shelf.io.http_request']
+          as io.HttpRequest;
       final socket = await io.WebSocketTransformer.upgrade(httpRequest);
       final connection = await manager.handleConnection(socket, request);
 
@@ -44,7 +46,8 @@ class WebSocketServer {
       // This will never be reached as WebSocket upgrade hijacks the request
       return HttpResponse.ok('WebSocket connection established');
     } catch (e) {
-      return HttpResponse.internalServerError('Failed to upgrade to WebSocket: ${e.toString()}');
+      return HttpResponse.internalServerError(
+          'Failed to upgrade to WebSocket: ${e.toString()}');
     }
   }
 
@@ -70,8 +73,10 @@ class WebSocketServer {
     manager.broadcast(type, data, excludeConnectionId: excludeConnectionId);
   }
 
-  void broadcastToChannel(String channel, String type, dynamic data, {String? excludeConnectionId}) {
-    manager.broadcastToChannel(channel, type, data, excludeConnectionId: excludeConnectionId);
+  void broadcastToChannel(String channel, String type, dynamic data,
+      {String? excludeConnectionId}) {
+    manager.broadcastToChannel(channel, type, data,
+        excludeConnectionId: excludeConnectionId);
   }
 
   Map<String, dynamic> getStats() {
@@ -101,7 +106,8 @@ class UpgradeResult {
   UpgradeResult({required this.allowed, this.reason});
 
   factory UpgradeResult.allow() => UpgradeResult(allowed: true);
-  factory UpgradeResult.deny(String reason) => UpgradeResult(allowed: false, reason: reason);
+  factory UpgradeResult.deny(String reason) =>
+      UpgradeResult(allowed: false, reason: reason);
 }
 
 class WebSocketAuthMiddleware extends WebSocketMiddleware {
@@ -117,8 +123,9 @@ class WebSocketAuthMiddleware extends WebSocketMiddleware {
   Future<UpgradeResult> canUpgrade(HttpRequest request) async {
     if (!requireAuth) return UpgradeResult.allow();
 
-    final token = request.headers['authorization']?.replaceFirst('Bearer ', '') ??
-                  request.uri.queryParameters['token'];
+    final token =
+        request.headers['authorization']?.replaceFirst('Bearer ', '') ??
+            request.uri.queryParameters['token'];
 
     if (token == null) {
       return UpgradeResult.deny('Authentication token required');
@@ -163,13 +170,13 @@ class WebSocketRateLimitMiddleware extends WebSocketMiddleware {
   Future<void> onMessage(WebSocketMessage message) async {
     final connectionId = message.connection.id;
     final now = DateTime.now();
-    
+
     _messageTimes.putIfAbsent(connectionId, () => []).add(now);
-    
+
     // Clean old messages (older than 1 minute)
     final cutoff = now.subtract(const Duration(minutes: 1));
     _messageTimes[connectionId]!.removeWhere((time) => time.isBefore(cutoff));
-    
+
     // Check rate limit
     if (_messageTimes[connectionId]!.length > maxMessagesPerMinute) {
       message.connection.sendError('Rate limit exceeded', code: 'RATE_LIMIT');
@@ -231,7 +238,7 @@ class WebSocketCorsMiddleware extends WebSocketMiddleware {
   @override
   Future<UpgradeResult> canUpgrade(HttpRequest request) async {
     final origin = request.headers['origin'];
-    
+
     if (origin == null) {
       return UpgradeResult.deny('Origin header required');
     }
@@ -283,11 +290,14 @@ class WebSocketRoom {
   }
 
   void _notifyMembershipChange(String connectionId, String action) {
-    broadcast('room_member_$action', {
-      'room': name,
-      'connection_id': connectionId,
-      'member_count': memberCount,
-    }, excludeConnectionId: connectionId);
+    broadcast(
+        'room_member_$action',
+        {
+          'room': name,
+          'connection_id': connectionId,
+          'member_count': memberCount,
+        },
+        excludeConnectionId: connectionId);
   }
 
   Map<String, dynamic> toJson() {

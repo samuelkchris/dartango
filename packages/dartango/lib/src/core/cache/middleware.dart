@@ -43,14 +43,15 @@ class CacheMiddleware extends BaseMiddleware {
   }
 
   @override
-  Future<HttpResponse> processResponse(HttpRequest request, HttpResponse response) async {
+  Future<HttpResponse> processResponse(
+      HttpRequest request, HttpResponse response) async {
     if (!_shouldCacheResponse(request, response)) {
       return response;
     }
 
     final cacheKey = _generateCacheKey(request);
     final timeout = _getCacheTimeout(response);
-    
+
     if (timeout != null) {
       final serializedResponse = _serializeResponse(response);
       await cache.set(cacheKey, serializedResponse, timeout: timeout);
@@ -69,8 +70,9 @@ class CacheMiddleware extends BaseMiddleware {
     }
 
     final cacheControl = request.headers['cache-control'];
-    if (cacheControl != null && 
-        (cacheControl.contains('no-cache') || cacheControl.contains('no-store'))) {
+    if (cacheControl != null &&
+        (cacheControl.contains('no-cache') ||
+            cacheControl.contains('no-store'))) {
       return false;
     }
 
@@ -83,10 +85,10 @@ class CacheMiddleware extends BaseMiddleware {
     }
 
     final cacheControl = response.headers['cache-control'];
-    if (cacheControl != null && 
-        (cacheControl.contains('no-cache') || 
-         cacheControl.contains('no-store') ||
-         cacheControl.contains('private'))) {
+    if (cacheControl != null &&
+        (cacheControl.contains('no-cache') ||
+            cacheControl.contains('no-store') ||
+            cacheControl.contains('private'))) {
       return false;
     }
 
@@ -99,14 +101,13 @@ class CacheMiddleware extends BaseMiddleware {
 
   String _generateCacheKey(HttpRequest request) {
     final baseKey = '${request.method}:${request.path}';
-    
+
     final queryParams = request.uri.queryParameters;
     if (queryParams.isNotEmpty) {
       final sortedParams = queryParams.entries.toList()
         ..sort((a, b) => a.key.compareTo(b.key));
-      final queryString = sortedParams
-          .map((e) => '${e.key}=${e.value}')
-          .join('&');
+      final queryString =
+          sortedParams.map((e) => '${e.key}=${e.value}').join('&');
       return '$baseKey?$queryString';
     }
 
@@ -179,7 +180,8 @@ class VaryHeaderMiddleware extends BaseMiddleware {
   });
 
   @override
-  Future<HttpResponse> processResponse(HttpRequest request, HttpResponse response) async {
+  Future<HttpResponse> processResponse(
+      HttpRequest request, HttpResponse response) async {
     final existingVary = response.headers['vary'];
     final varyValues = <String>[];
 
@@ -203,7 +205,8 @@ class VaryHeaderMiddleware extends BaseMiddleware {
 
 class ETagMiddleware extends BaseMiddleware {
   @override
-  Future<HttpResponse> processResponse(HttpRequest request, HttpResponse response) async {
+  Future<HttpResponse> processResponse(
+      HttpRequest request, HttpResponse response) async {
     if (response.statusCode == 200 && !response.headers.containsKey('etag')) {
       final etag = _generateETag(response.body);
       response.headers['etag'] = etag;
@@ -231,7 +234,8 @@ class ETagMiddleware extends BaseMiddleware {
 
 class ConditionalGetMiddleware extends BaseMiddleware {
   @override
-  Future<HttpResponse> processResponse(HttpRequest request, HttpResponse response) async {
+  Future<HttpResponse> processResponse(
+      HttpRequest request, HttpResponse response) async {
     if (response.statusCode != 200) {
       return response;
     }
@@ -271,7 +275,8 @@ class CacheControlMiddleware extends BaseMiddleware {
   });
 
   @override
-  Future<HttpResponse> processResponse(HttpRequest request, HttpResponse response) async {
+  Future<HttpResponse> processResponse(
+      HttpRequest request, HttpResponse response) async {
     if (!response.headers.containsKey('cache-control')) {
       response.headers['cache-control'] = defaultCacheControl;
     }

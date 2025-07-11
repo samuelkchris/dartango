@@ -30,15 +30,15 @@ abstract class TestCase {
   }
 
   URLConfiguration getUrlConfiguration();
-  
+
   List<BaseMiddleware> getMiddleware() => [];
-  
+
   Map<String, String> getDefaultHeaders() => {};
 
   Future<void> runInTransaction(Future<void> Function() operation) async {
     _transaction = TestTransactionContext();
     _transaction!.begin();
-    
+
     try {
       await operation();
       _transaction!.commit();
@@ -70,11 +70,13 @@ abstract class TestCase {
     response.assertHeaderExists(headerName);
   }
 
-  void assertHeaderEquals(TestResponse response, String headerName, String expectedValue) {
+  void assertHeaderEquals(
+      TestResponse response, String headerName, String expectedValue) {
     response.assertHeaderEquals(headerName, expectedValue);
   }
 
-  void assertJsonResponse(TestResponse response, Map<String, dynamic> expectedJson) {
+  void assertJsonResponse(
+      TestResponse response, Map<String, dynamic> expectedJson) {
     response.assertJsonEquals(expectedJson);
   }
 }
@@ -105,9 +107,9 @@ class SimpleTestCase extends TestCase {
     required URLConfiguration urlConfig,
     List<BaseMiddleware>? middleware,
     Map<String, String>? defaultHeaders,
-  }) : _urlConfig = urlConfig,
-       _middleware = middleware ?? [],
-       _defaultHeaders = defaultHeaders ?? {};
+  })  : _urlConfig = urlConfig,
+        _middleware = middleware ?? [],
+        _defaultHeaders = defaultHeaders ?? {};
 
   @override
   URLConfiguration getUrlConfiguration() => _urlConfig;
@@ -194,13 +196,15 @@ mixin MailTestMixin on TestCase {
     }).toList();
 
     if (matches.isNotEmpty) {
-      throw AssertionError('Found ${matches.length} emails matching criteria, expected 0');
+      throw AssertionError(
+          'Found ${matches.length} emails matching criteria, expected 0');
     }
   }
 
   void assertEmailCount(int expectedCount) {
     if (_sentEmails.length != expectedCount) {
-      throw AssertionError('Expected $expectedCount emails, got ${_sentEmails.length}');
+      throw AssertionError(
+          'Expected $expectedCount emails, got ${_sentEmails.length}');
     }
   }
 }
@@ -248,7 +252,8 @@ mixin CacheTestMixin on TestCase {
     assertCacheContains(key);
     final actualValue = cacheData[key];
     if (actualValue != expectedValue) {
-      throw AssertionError('Cache key "$key" expected "$expectedValue", got "$actualValue"');
+      throw AssertionError(
+          'Cache key "$key" expected "$expectedValue", got "$actualValue"');
     }
   }
 }
@@ -291,8 +296,7 @@ mixin OverrideSettingsMixin on TestCase {
     return null;
   }
 
-  void applySettingOverride(String key, dynamic value) {
-  }
+  void applySettingOverride(String key, dynamic value) {}
 }
 
 class AssertionError extends Error {

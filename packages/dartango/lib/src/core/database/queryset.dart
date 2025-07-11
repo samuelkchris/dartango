@@ -11,30 +11,38 @@ class QuerySet<T extends Model> {
   final String _tableName;
   final String? _database;
   final QueryBuilder _queryBuilder;
+  final T Function(Map<String, dynamic>) _modelFactory;
   bool _resultCache = false;
   List<T>? _cachedResults;
-  
+
   final List<String> _selectFields = [];
   final List<String> _selectRelated = [];
   final List<String> _prefetchRelated = [];
   final Map<String, dynamic> _annotations = {};
   final Map<String, String> _extra = {};
   bool _distinct = false;
-  
-  QuerySet(this._modelType, this._tableName, [this._database]) 
-      : _queryBuilder = QueryBuilder().from(_tableName);
-  
+
+  QuerySet(this._modelType, this._tableName,
+      [this._database, T Function(Map<String, dynamic>)? modelFactory])
+      : _queryBuilder = QueryBuilder().from(_tableName),
+        _modelFactory = modelFactory ?? _defaultModelFactory;
+
   QuerySet._clone(QuerySet<T> other)
       : _modelType = other._modelType,
         _tableName = other._tableName,
         _database = other._database,
-        _queryBuilder = other._queryBuilder.clone() {
+        _queryBuilder = other._queryBuilder.clone(),
+        _modelFactory = other._modelFactory {
     _selectFields.addAll(other._selectFields);
     _selectRelated.addAll(other._selectRelated);
     _prefetchRelated.addAll(other._prefetchRelated);
     _annotations.addAll(other._annotations);
     _extra.addAll(other._extra);
     _distinct = other._distinct;
+  }
+
+  static T _defaultModelFactory<T extends Model>(Map<String, dynamic> data) {
+    throw UnsupportedError('Model factory not provided for QuerySet');
   }
 
   // Filtering methods
@@ -44,7 +52,7 @@ class QuerySet<T extends Model> {
       final parts = entry.key.split('__');
       final fieldName = parts[0];
       final lookup = parts.length > 1 ? parts[1] : 'exact';
-      
+
       clone._applyFilter(fieldName, lookup, entry.value);
     }
     return clone;
@@ -54,21 +62,21 @@ class QuerySet<T extends Model> {
     final clone = _clone();
     final conditions = <String>[];
     final parameters = <dynamic>[];
-    
+
     for (final entry in filters.entries) {
       final parts = entry.key.split('__');
       final fieldName = parts[0];
       final lookup = parts.length > 1 ? parts[1] : 'exact';
-      
+
       final condition = clone._buildCondition(fieldName, lookup, entry.value);
       conditions.add('NOT (${condition.condition})');
       parameters.addAll(condition.parameters);
     }
-    
+
     if (conditions.isNotEmpty) {
       clone._queryBuilder.where(conditions.join(' AND '), parameters);
     }
-    
+
     return clone;
   }
 
@@ -82,7 +90,7 @@ class QuerySet<T extends Model> {
   QuerySet<T> orderBy(List<String> fields) {
     final clone = _clone();
     clone._queryBuilder.orderByFields.clear();
-    
+
     for (final field in fields) {
       if (field.startsWith('-')) {
         clone._queryBuilder.orderByDesc(field.substring(1));
@@ -90,7 +98,7 @@ class QuerySet<T extends Model> {
         clone._queryBuilder.orderBy(field);
       }
     }
-    
+
     return clone;
   }
 
@@ -98,7 +106,7 @@ class QuerySet<T extends Model> {
     final clone = _clone();
     final currentOrdering = clone._queryBuilder.orderByFields.toList();
     clone._queryBuilder.orderByFields.clear();
-    
+
     for (final order in currentOrdering) {
       if (order.endsWith(' DESC')) {
         final field = order.substring(0, order.length - 5);
@@ -108,7 +116,7 @@ class QuerySet<T extends Model> {
         clone._queryBuilder.orderByDesc(field);
       }
     }
-    
+
     return clone;
   }
 
@@ -146,8 +154,9 @@ class QuerySet<T extends Model> {
   QuerySet<T> defer(List<String> fields) {
     final clone = _clone();
     final allFields = Model.getFieldNames(_modelType);
-    final selectedFields = allFields.where((field) => !fields.contains(field)).toList();
-    
+    final selectedFields =
+        allFields.where((field) => !fields.contains(field)).toList();
+
     clone._selectFields.clear();
     clone._selectFields.addAll(selectedFields);
     clone._queryBuilder.select(selectedFields);
@@ -174,7 +183,7 @@ class QuerySet<T extends Model> {
   QuerySet<T> distinct([List<String>? fields]) {
     final clone = _clone();
     clone._distinct = true;
-    
+
     if (fields != null && fields.isNotEmpty) {
       // PostgreSQL supports DISTINCT ON
       final distinctFields = fields.join(', ');
@@ -184,7 +193,7 @@ class QuerySet<T extends Model> {
       clone._queryBuilder.selectFields.clear();
       clone._queryBuilder.selectFields.add('DISTINCT *');
     }
-    
+
     return clone;
   }
 
@@ -192,11 +201,12 @@ class QuerySet<T extends Model> {
   QuerySet<T> selectRelated(List<String> fields) {
     final clone = _clone();
     clone._selectRelated.addAll(fields);
-    
+
     for (final field in fields) {
-      clone._queryBuilder.leftJoin('${field}_table', '${_tableName}.${field}_id = ${field}_table.id');
+      clone._queryBuilder.leftJoin(
+          '${field}_table', '${_tableName}.${field}_id = ${field}_table.id');
     }
-    
+
     return clone;
   }
 
@@ -210,27 +220,29 @@ class QuerySet<T extends Model> {
   QuerySet<T> annotate(Map<String, dynamic> annotations) {
     final clone = _clone();
     clone._annotations.addAll(annotations);
-    
+
     for (final entry in annotations.entries) {
       clone._queryBuilder.select(['${entry.value} as ${entry.key}']);
     }
-    
+
     return clone;
   }
 
-  Future<Map<String, dynamic>> aggregate(Map<String, String> aggregations) async {
+  Future<Map<String, dynamic>> aggregate(
+      Map<String, String> aggregations) async {
     final clone = _clone();
     final selectFields = <String>[];
-    
+
     for (final entry in aggregations.entries) {
       selectFields.add('${entry.value} as ${entry.key}');
     }
-    
+
     clone._queryBuilder.select(selectFields);
-    
+
     final connection = await DatabaseRouter.getConnection(_database);
     try {
-      final result = await connection.query(clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
+      final result = await connection.query(
+          clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
       return result.isNotEmpty ? result.first : {};
     } finally {
       await DatabaseRouter.releaseConnection(connection, _database);
@@ -259,29 +271,29 @@ class QuerySet<T extends Model> {
     List<String>? orderBy,
   }) {
     final clone = _clone();
-    
+
     if (select != null) {
       for (final field in select) {
         clone._queryBuilder.select([field]);
       }
     }
-    
+
     if (where != null) {
       clone._queryBuilder.where(where, params);
     }
-    
+
     if (tables != null) {
       for (final table in tables) {
         clone._queryBuilder.from(table);
       }
     }
-    
+
     if (orderBy != null) {
       for (final field in orderBy) {
         clone._queryBuilder.orderBy(field);
       }
     }
-    
+
     return clone;
   }
 
@@ -304,17 +316,21 @@ class QuerySet<T extends Model> {
 
   QuerySet<T> intersection(QuerySet<T> other) {
     final clone = _clone();
-    final intersectQuery = 'SELECT * FROM (${clone._queryBuilder.toSql()}) INTERSECT (${other._queryBuilder.toSql()})';
+    final intersectQuery =
+        'SELECT * FROM (${clone._queryBuilder.toSql()}) INTERSECT (${other._queryBuilder.toSql()})';
     clone._queryBuilder.rawSql = intersectQuery;
-    clone._queryBuilder.mutableParameters.addAll(other._queryBuilder.parameters);
+    clone._queryBuilder.mutableParameters
+        .addAll(other._queryBuilder.parameters);
     return clone;
   }
 
   QuerySet<T> difference(QuerySet<T> other) {
     final clone = _clone();
-    final exceptQuery = 'SELECT * FROM (${clone._queryBuilder.toSql()}) EXCEPT (${other._queryBuilder.toSql()})';
+    final exceptQuery =
+        'SELECT * FROM (${clone._queryBuilder.toSql()}) EXCEPT (${other._queryBuilder.toSql()})';
     clone._queryBuilder.rawSql = exceptQuery;
-    clone._queryBuilder.mutableParameters.addAll(other._queryBuilder.parameters);
+    clone._queryBuilder.mutableParameters
+        .addAll(other._queryBuilder.parameters);
     return clone;
   }
 
@@ -323,21 +339,22 @@ class QuerySet<T extends Model> {
     if (_cachedResults != null && _resultCache) {
       return _cachedResults!;
     }
-    
+
     final connection = await DatabaseRouter.getConnection(_database);
     try {
-      final results = await connection.query(_queryBuilder.toSql(), _queryBuilder.parameters);
+      final results = await connection.query(
+          _queryBuilder.toSql(), _queryBuilder.parameters);
       final models = results.map((data) => _createModelFromData(data)).toList();
-      
+
       if (_resultCache) {
         _cachedResults = models;
       }
-      
+
       // Handle prefetch_related
       if (_prefetchRelated.isNotEmpty) {
         await _handlePrefetchRelated(models);
       }
-      
+
       return models;
     } finally {
       await DatabaseRouter.releaseConnection(connection, _database);
@@ -347,7 +364,7 @@ class QuerySet<T extends Model> {
   Future<T?> first() async {
     final clone = _clone();
     clone._queryBuilder.limit(1);
-    
+
     final results = await clone.all();
     return results.isNotEmpty ? results.first : null;
   }
@@ -355,11 +372,11 @@ class QuerySet<T extends Model> {
   Future<T?> last() async {
     final clone = _clone();
     clone._queryBuilder.limit(1);
-    
+
     // Reverse the ordering
     final currentOrdering = clone._queryBuilder.orderByFields.toList();
     clone._queryBuilder.orderByFields.clear();
-    
+
     for (final order in currentOrdering) {
       if (order.endsWith(' DESC')) {
         final field = order.substring(0, order.length - 5);
@@ -369,7 +386,7 @@ class QuerySet<T extends Model> {
         clone._queryBuilder.orderByDesc(field);
       }
     }
-    
+
     final results = await clone.all();
     return results.isNotEmpty ? results.first : null;
   }
@@ -377,15 +394,17 @@ class QuerySet<T extends Model> {
   Future<T> get(Map<String, dynamic> filters) async {
     final clone = filter(filters);
     final results = await clone.all();
-    
+
     if (results.isEmpty) {
-      throw DoesNotExistException('${_modelType.toString()} matching query does not exist');
+      throw DoesNotExistException(
+          '${_modelType.toString()} matching query does not exist');
     }
-    
+
     if (results.length > 1) {
-      throw MultipleObjectsReturnedException('${_modelType.toString()} query returned multiple objects');
+      throw MultipleObjectsReturnedException(
+          '${_modelType.toString()} query returned multiple objects');
     }
-    
+
     return results.first;
   }
 
@@ -397,7 +416,8 @@ class QuerySet<T extends Model> {
     }
   }
 
-  Future<T> getOrCreate(Map<String, dynamic> filters, {Map<String, dynamic>? defaults}) async {
+  Future<T> getOrCreate(Map<String, dynamic> filters,
+      {Map<String, dynamic>? defaults}) async {
     try {
       return await get(filters);
     } on DoesNotExistException {
@@ -405,14 +425,15 @@ class QuerySet<T extends Model> {
       if (defaults != null) {
         createData.addAll(defaults);
       }
-      
+
       final model = _createModelFromData(createData);
       await model.save();
       return model;
     }
   }
 
-  Future<MapEntry<T, bool>> updateOrCreate(Map<String, dynamic> filters, {Map<String, dynamic>? defaults}) async {
+  Future<MapEntry<T, bool>> updateOrCreate(Map<String, dynamic> filters,
+      {Map<String, dynamic>? defaults}) async {
     try {
       final existing = await get(filters);
       if (defaults != null) {
@@ -427,7 +448,7 @@ class QuerySet<T extends Model> {
       if (defaults != null) {
         createData.addAll(defaults);
       }
-      
+
       final model = _createModelFromData(createData);
       await model.save();
       return MapEntry(model, true);
@@ -439,10 +460,11 @@ class QuerySet<T extends Model> {
     final clone = _clone();
     clone._queryBuilder.select(['1']);
     clone._queryBuilder.limit(1);
-    
+
     final connection = await DatabaseRouter.getConnection(_database);
     try {
-      final result = await connection.query(clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
+      final result = await connection.query(
+          clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
       return result.isNotEmpty;
     } finally {
       await DatabaseRouter.releaseConnection(connection, _database);
@@ -455,10 +477,11 @@ class QuerySet<T extends Model> {
     clone._queryBuilder.select(['COUNT(*) as count']);
     clone._queryBuilder.limitValue = null;
     clone._queryBuilder.offsetValue = null;
-    
+
     final connection = await DatabaseRouter.getConnection(_database);
     try {
-      final result = await connection.query(clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
+      final result = await connection.query(
+          clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
       return result.first['count'] as int;
     } finally {
       await DatabaseRouter.releaseConnection(connection, _database);
@@ -470,13 +493,15 @@ class QuerySet<T extends Model> {
     final connection = await DatabaseRouter.getConnection(_database);
     try {
       final updateBuilder = UpdateQueryBuilder(_tableName).set(values);
-      
-      // Copy where conditions from the query builder
-      for (final condition in _queryBuilder.whereConditions) {
-        updateBuilder.where(condition);
+
+      // Copy where conditions and parameters from the query builder
+      if (_queryBuilder.whereConditions.isNotEmpty) {
+        final whereClause = _queryBuilder.whereConditions.join(' AND ');
+        updateBuilder.where(whereClause, _queryBuilder.parameters);
       }
-      
-      final result = await connection.execute(updateBuilder.toSql(), updateBuilder.parameters);
+
+      final result = await connection.execute(
+          updateBuilder.toSql(), updateBuilder.parameters);
       return result.affectedRows ?? 0;
     } finally {
       await DatabaseRouter.releaseConnection(connection, _database);
@@ -487,13 +512,15 @@ class QuerySet<T extends Model> {
     final connection = await DatabaseRouter.getConnection(_database);
     try {
       final deleteBuilder = DeleteQueryBuilder(_tableName);
-      
-      // Copy where conditions from the query builder
-      for (final condition in _queryBuilder.whereConditions) {
-        deleteBuilder.where(condition);
+
+      // Copy where conditions and parameters from the query builder
+      if (_queryBuilder.whereConditions.isNotEmpty) {
+        final whereClause = _queryBuilder.whereConditions.join(' AND ');
+        deleteBuilder.where(whereClause, _queryBuilder.parameters);
       }
-      
-      final result = await connection.execute(deleteBuilder.toSql(), deleteBuilder.parameters);
+
+      final result = await connection.execute(
+          deleteBuilder.toSql(), deleteBuilder.parameters);
       return result.affectedRows ?? 0;
     } finally {
       await DatabaseRouter.releaseConnection(connection, _database);
@@ -501,40 +528,45 @@ class QuerySet<T extends Model> {
   }
 
   // Bulk operations
-  Future<List<T>> bulkCreate(List<Map<String, dynamic>> dataList, {int batchSize = 1000}) async {
+  Future<List<T>> bulkCreate(List<Map<String, dynamic>> dataList,
+      {int batchSize = 1000}) async {
     final connection = await DatabaseRouter.getConnection(_database);
     try {
       final batches = <List<Map<String, dynamic>>>[];
       for (int i = 0; i < dataList.length; i += batchSize) {
-        final end = (i + batchSize < dataList.length) ? i + batchSize : dataList.length;
+        final end =
+            (i + batchSize < dataList.length) ? i + batchSize : dataList.length;
         batches.add(dataList.sublist(i, end));
       }
-      
+
       final results = <T>[];
       for (final batch in batches) {
         final builder = InsertQueryBuilder(_tableName).bulkValues(batch);
         await connection.execute(builder.toSql(), builder.parameters);
-        
+
         for (final data in batch) {
           results.add(_createModelFromData(data));
         }
       }
-      
+
       return results;
     } finally {
       await DatabaseRouter.releaseConnection(connection, _database);
     }
   }
 
-  Future<int> bulkUpdate(List<Map<String, dynamic>> dataList, List<String> updateFields, {int batchSize = 1000}) async {
+  Future<int> bulkUpdate(
+      List<Map<String, dynamic>> dataList, List<String> updateFields,
+      {int batchSize = 1000}) async {
     int updated = 0;
-    
+
     final batches = <List<Map<String, dynamic>>>[];
     for (int i = 0; i < dataList.length; i += batchSize) {
-      final end = (i + batchSize < dataList.length) ? i + batchSize : dataList.length;
+      final end =
+          (i + batchSize < dataList.length) ? i + batchSize : dataList.length;
       batches.add(dataList.sublist(i, end));
     }
-    
+
     final connection = await DatabaseRouter.getConnection(_database);
     try {
       for (final batch in batches) {
@@ -545,21 +577,22 @@ class QuerySet<T extends Model> {
               updateData[field] = data[field];
             }
           }
-          
+
           final pkField = Model.getPrimaryKeyField(_modelType);
           final pkValue = data[pkField];
-          
+
           if (pkValue != null) {
             final builder = UpdateQueryBuilder(_tableName)
                 .set(updateData)
                 .where('$pkField = ?', [pkValue]);
-            
-            final result = await connection.execute(builder.toSql(), builder.parameters);
+
+            final result =
+                await connection.execute(builder.toSql(), builder.parameters);
             updated += result.affectedRows ?? 0;
           }
         }
       }
-      
+
       return updated;
     } finally {
       await DatabaseRouter.releaseConnection(connection, _database);
@@ -567,19 +600,23 @@ class QuerySet<T extends Model> {
   }
 
   // Utility methods
-  Future<List<dynamic>> getValuesList(List<String> fields, {bool flat = false}) async {
+  Future<List<dynamic>> getValuesList(List<String> fields,
+      {bool flat = false}) async {
     final clone = _clone();
     clone._queryBuilder.select(fields);
-    
+
     final connection = await DatabaseRouter.getConnection(_database);
     try {
-      final results = await connection.query(clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
-      
+      final results = await connection.query(
+          clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
+
       if (flat && fields.length == 1) {
         return results.map((row) => row[fields.first]).toList();
       }
-      
-      return results.map((row) => fields.map((field) => row[field]).toList()).toList();
+
+      return results
+          .map((row) => fields.map((field) => row[field]).toList())
+          .toList();
     } finally {
       await DatabaseRouter.releaseConnection(connection, _database);
     }
@@ -588,10 +625,11 @@ class QuerySet<T extends Model> {
   Future<List<Map<String, dynamic>>> getValues(List<String> fields) async {
     final clone = _clone();
     clone._queryBuilder.select(fields);
-    
+
     final connection = await DatabaseRouter.getConnection(_database);
     try {
-      final results = await connection.query(clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
+      final results = await connection.query(
+          clone._queryBuilder.toSql(), clone._queryBuilder.parameters);
       return results.map((row) {
         final result = <String, dynamic>{};
         for (final field in fields) {
@@ -629,8 +667,7 @@ class QuerySet<T extends Model> {
   }
 
   T _createModelFromData(Map<String, dynamic> data) {
-    final modelClass = _modelType as dynamic;
-    return modelClass.fromMap(data) as T;
+    return _modelFactory(data);
   }
 
   void _applyFilter(String fieldName, String lookup, dynamic value) {
@@ -638,7 +675,8 @@ class QuerySet<T extends Model> {
     _queryBuilder.where(condition.condition, condition.parameters);
   }
 
-  FilterCondition _buildCondition(String fieldName, String lookup, dynamic value) {
+  FilterCondition _buildCondition(
+      String fieldName, String lookup, dynamic value) {
     switch (lookup) {
       case 'exact':
         return FilterCondition('$fieldName = ?', [value]);
@@ -684,7 +722,8 @@ class QuerySet<T extends Model> {
         if (value is List && value.length == 2) {
           return FilterCondition('$fieldName BETWEEN ? AND ?', value);
         }
-        throw QuerySetException('Value for "range" lookup must be a list of 2 elements');
+        throw QuerySetException(
+            'Value for "range" lookup must be a list of 2 elements');
       case 'year':
         return FilterCondition('EXTRACT(YEAR FROM $fieldName) = ?', [value]);
       case 'month':
@@ -713,29 +752,31 @@ class QuerySet<T extends Model> {
       await _prefetchField(models, relatedField);
     }
   }
-  
+
   Future<void> _prefetchField(List<T> models, String fieldName) async {
-    final modelIds = models.map((model) => model.pk).where((id) => id != null).toList();
+    final modelIds =
+        models.map((model) => model.pk).where((id) => id != null).toList();
     if (modelIds.isEmpty) return;
-    
+
     final connection = await DatabaseRouter.getConnection(_database);
     try {
       final relatedTableName = '${fieldName}s';
       final foreignKey = '${_tableName.substring(0, _tableName.length - 1)}_id';
-      
+
       final query = QueryBuilder()
           .select(['*'])
           .from(relatedTableName)
           .whereIn(foreignKey, modelIds);
-      
-      final relatedResults = await connection.query(query.toSql(), query.parameters);
-      
+
+      final relatedResults =
+          await connection.query(query.toSql(), query.parameters);
+
       final relatedObjectsMap = <dynamic, List<Map<String, dynamic>>>{};
       for (final row in relatedResults) {
         final foreignKeyValue = row[foreignKey];
         relatedObjectsMap.putIfAbsent(foreignKeyValue, () => []).add(row);
       }
-      
+
       for (final model in models) {
         final relatedObjects = relatedObjectsMap[model.pk] ?? [];
         model.setField('_${fieldName}_cache', relatedObjects);
@@ -774,7 +815,7 @@ extension QuerySetExtensions<T extends Model> on QuerySet<T> {
   Future<T?> randomOrNull() async {
     final count = await this.count();
     if (count == 0) return null;
-    
+
     final randomOffset = math.Random().nextInt(count);
     return await offset(randomOffset).first();
   }
@@ -792,7 +833,7 @@ extension QuerySetExtensions<T extends Model> on QuerySet<T> {
     final offset = (page - 1) * perPage;
     final items = await this.offset(offset).limit(perPage).all();
     final totalCount = await count();
-    
+
     return QuerySetPage<T>(
       items: items,
       page: page,
@@ -808,16 +849,17 @@ extension QuerySetExtensions<T extends Model> on QuerySet<T> {
     while (true) {
       final chunk = await this.offset(offset).limit(chunkSize).all();
       if (chunk.isEmpty) break;
-      
+
       yield chunk;
       offset += chunkSize;
-      
+
       if (chunk.length < chunkSize) break;
     }
   }
 
   // Batch operations
-  Future<void> batchUpdate(Map<String, dynamic> updates, {int batchSize = 1000}) async {
+  Future<void> batchUpdate(Map<String, dynamic> updates,
+      {int batchSize = 1000}) async {
     await update(updates);
   }
 
@@ -845,10 +887,10 @@ class QuerySetPage<T extends Model> {
   bool get hasPrevious => page > 1;
   int? get nextPage => hasNext ? page + 1 : null;
   int? get previousPage => hasPrevious ? page - 1 : null;
-  
+
   int get startIndex => (page - 1) * perPage + 1;
   int get endIndex => math.min(page * perPage, totalCount);
-  
+
   @override
   String toString() {
     return 'QuerySetPage<${T.toString()}>(page: $page, items: ${items.length}, total: $totalCount)';

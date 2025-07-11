@@ -37,8 +37,8 @@ Examples:
     final parser = ArgParser();
     parser.addOption('app', abbr: 'a', help: 'App to generate code in');
     parser.addOption('output', abbr: 'o', help: 'Output directory');
-    parser.addFlag('force', abbr: 'f', defaultsTo: false,
-        help: 'Overwrite existing files');
+    parser.addFlag('force',
+        abbr: 'f', defaultsTo: false, help: 'Overwrite existing files');
     return parser;
   }
 
@@ -86,7 +86,8 @@ Examples:
     }
   }
 
-  Future<void> _generateModel(String name, String? app, String? output, bool force) async {
+  Future<void> _generateModel(
+      String name, String? app, String? output, bool force) async {
     if (app == null) {
       printError('App name is required for model generation');
       printInfo('Use --app=<app_name> to specify the app');
@@ -112,7 +113,8 @@ Examples:
     printSuccess('Model "$name" generated successfully!');
   }
 
-  Future<void> _generateView(String name, String? app, String? output, bool force) async {
+  Future<void> _generateView(
+      String name, String? app, String? output, bool force) async {
     if (app == null) {
       printError('App name is required for view generation');
       printInfo('Use --app=<app_name> to specify the app');
@@ -138,7 +140,8 @@ Examples:
     printSuccess('View "$name" generated successfully!');
   }
 
-  Future<void> _generateMiddleware(String name, String? output, bool force) async {
+  Future<void> _generateMiddleware(
+      String name, String? output, bool force) async {
     final outputPath = output ?? path.join('lib', 'middleware');
     final generator = MiddlewareGenerator(
       name: name,
@@ -165,7 +168,7 @@ Examples:
   bool _isInDartangoProject() {
     final pubspecFile = File('pubspec.yaml');
     if (!pubspecFile.existsSync()) return false;
-    
+
     final content = pubspecFile.readAsStringSync();
     return content.contains('dartango');
   }

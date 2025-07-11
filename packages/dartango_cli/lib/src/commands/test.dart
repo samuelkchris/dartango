@@ -30,13 +30,17 @@ Examples:
     parser.addOption('app', abbr: 'a', help: 'Run tests for specific app');
     parser.addOption('file', abbr: 'f', help: 'Run specific test file');
     parser.addOption('pattern', abbr: 'p', help: 'Run tests matching pattern');
-    parser.addFlag('coverage', abbr: 'c', defaultsTo: false,
-        help: 'Generate code coverage report');
-    parser.addFlag('watch', abbr: 'w', defaultsTo: false,
+    parser.addFlag('coverage',
+        abbr: 'c', defaultsTo: false, help: 'Generate code coverage report');
+    parser.addFlag('watch',
+        abbr: 'w',
+        defaultsTo: false,
         help: 'Watch for changes and re-run tests');
-    parser.addFlag('verbose', abbr: 'v', defaultsTo: false,
-        help: 'Enable verbose output');
-    parser.addOption('reporter', abbr: 'r', defaultsTo: 'compact',
+    parser.addFlag('verbose',
+        abbr: 'v', defaultsTo: false, help: 'Enable verbose output');
+    parser.addOption('reporter',
+        abbr: 'r',
+        defaultsTo: 'compact',
         allowed: ['compact', 'expanded', 'json'],
         help: 'Test reporter format');
     return parser;
@@ -125,7 +129,7 @@ Examples:
 
     if (exitCode == 0) {
       printSuccess('All tests passed!');
-      
+
       if (coverage) {
         print('');
         printInfo('Generating coverage report...');
@@ -155,7 +159,7 @@ Examples:
 
       print('');
       printInfo('Waiting for file changes...');
-      
+
       // Simple file watching - in a real implementation, you'd use a proper file watcher
       await Future.delayed(const Duration(seconds: 2));
     }
@@ -166,7 +170,13 @@ Examples:
       // Generate HTML coverage report
       final formatProcess = await Process.start(
         'dart',
-        ['run', 'coverage:format_coverage', '--lcov', '--in=coverage', '--out=coverage/lcov.info'],
+        [
+          'run',
+          'coverage:format_coverage',
+          '--lcov',
+          '--in=coverage',
+          '--out=coverage/lcov.info'
+        ],
         mode: ProcessStartMode.normal,
       );
 
@@ -184,7 +194,8 @@ Examples:
       if (htmlExitCode == 0) {
         printSuccess('Coverage report generated: coverage/html/index.html');
       } else {
-        printWarning('HTML coverage report generation failed. Install genhtml for HTML reports.');
+        printWarning(
+            'HTML coverage report generation failed. Install genhtml for HTML reports.');
         printInfo('Coverage data available at: coverage/lcov.info');
       }
     } catch (e) {
@@ -195,7 +206,7 @@ Examples:
   bool _isInDartangoProject() {
     final pubspecFile = File('pubspec.yaml');
     if (!pubspecFile.existsSync()) return false;
-    
+
     final content = pubspecFile.readAsStringSync();
     return content.contains('dartango');
   }

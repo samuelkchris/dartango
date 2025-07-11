@@ -24,7 +24,7 @@ class FileSessionStore extends SessionStore {
   @override
   FutureOr<Map<String, dynamic>?> load(String sessionKey) async {
     final file = File(path.join(sessionPath, sessionKey));
-    
+
     if (!file.existsSync()) {
       return null;
     }
@@ -32,7 +32,7 @@ class FileSessionStore extends SessionStore {
     try {
       final content = await file.readAsString();
       final data = json.decode(content) as Map<String, dynamic>;
-      
+
       final expiryTime = data['__expiry'] as int?;
       if (expiryTime != null) {
         if (DateTime.now().millisecondsSinceEpoch > expiryTime) {
@@ -41,7 +41,7 @@ class FileSessionStore extends SessionStore {
         }
         data.remove('__expiry');
       }
-      
+
       return data;
     } catch (e) {
       await file.delete();
@@ -50,12 +50,14 @@ class FileSessionStore extends SessionStore {
   }
 
   @override
-  FutureOr<void> save(String sessionKey, Map<String, dynamic> data, Duration expiry) async {
+  FutureOr<void> save(
+      String sessionKey, Map<String, dynamic> data, Duration expiry) async {
     final file = File(path.join(sessionPath, sessionKey));
-    
+
     final dataWithExpiry = Map<String, dynamic>.from(data);
-    dataWithExpiry['__expiry'] = DateTime.now().add(expiry).millisecondsSinceEpoch;
-    
+    dataWithExpiry['__expiry'] =
+        DateTime.now().add(expiry).millisecondsSinceEpoch;
+
     await file.writeAsString(json.encode(dataWithExpiry));
   }
 
@@ -92,14 +94,14 @@ class FileSessionStore extends SessionStore {
     if (!dir.existsSync()) return;
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    
+
     await for (final entity in dir.list()) {
       if (entity is File) {
         try {
           final content = await entity.readAsString();
           final data = json.decode(content) as Map<String, dynamic>;
           final expiryTime = data['__expiry'] as int?;
-          
+
           if (expiryTime != null && now > expiryTime) {
             await entity.delete();
           }
@@ -128,7 +130,7 @@ class DatabaseSessionStore extends SessionStore {
   @override
   FutureOr<Map<String, dynamic>?> load(String sessionKey) async {
     final row = await _querySession(sessionKey);
-    
+
     if (row == null) {
       return null;
     }
@@ -149,10 +151,11 @@ class DatabaseSessionStore extends SessionStore {
   }
 
   @override
-  FutureOr<void> save(String sessionKey, Map<String, dynamic> data, Duration expiry) async {
+  FutureOr<void> save(
+      String sessionKey, Map<String, dynamic> data, Duration expiry) async {
     final expiryTime = DateTime.now().add(expiry);
     final dataJson = json.encode(data);
-    
+
     await _upsertSession(sessionKey, dataJson, expiryTime);
   }
 
@@ -185,19 +188,17 @@ class DatabaseSessionStore extends SessionStore {
     return null;
   }
 
-  Future<void> _upsertSession(String sessionKey, String data, DateTime expiry) async {
-  }
+  Future<void> _upsertSession(
+      String sessionKey, String data, DateTime expiry) async {}
 
-  Future<void> _deleteSession(String sessionKey) async {
-  }
+  Future<void> _deleteSession(String sessionKey) async {}
 
   Future<void> cleanup() async {
     final now = DateTime.now();
     await _cleanupExpiredSessions(now);
   }
 
-  Future<void> _cleanupExpiredSessions(DateTime now) async {
-  }
+  Future<void> _cleanupExpiredSessions(DateTime now) async {}
 }
 
 class RedisSessionStore extends SessionStore {
@@ -212,7 +213,7 @@ class RedisSessionStore extends SessionStore {
   FutureOr<Map<String, dynamic>?> load(String sessionKey) async {
     final key = '$keyPrefix$sessionKey';
     final data = await _redisGet(key);
-    
+
     if (data == null) {
       return null;
     }
@@ -226,10 +227,11 @@ class RedisSessionStore extends SessionStore {
   }
 
   @override
-  FutureOr<void> save(String sessionKey, Map<String, dynamic> data, Duration expiry) async {
+  FutureOr<void> save(
+      String sessionKey, Map<String, dynamic> data, Duration expiry) async {
     final key = '$keyPrefix$sessionKey';
     final dataJson = json.encode(data);
-    
+
     await _redisSetex(key, expiry.inSeconds, dataJson);
   }
 
@@ -263,11 +265,9 @@ class RedisSessionStore extends SessionStore {
     return null;
   }
 
-  Future<void> _redisSetex(String key, int seconds, String value) async {
-  }
+  Future<void> _redisSetex(String key, int seconds, String value) async {}
 
-  Future<void> _redisDelete(String key) async {
-  }
+  Future<void> _redisDelete(String key) async {}
 
   Future<bool> _redisExists(String key) async {
     return false;
@@ -297,12 +297,13 @@ class CachedSessionStore extends SessionStore {
       _cache[sessionKey] = Map.from(data);
       _cacheExpiry[sessionKey] = DateTime.now().add(cacheTimeout);
     }
-    
+
     return data;
   }
 
   @override
-  FutureOr<void> save(String sessionKey, Map<String, dynamic> data, Duration expiry) async {
+  FutureOr<void> save(
+      String sessionKey, Map<String, dynamic> data, Duration expiry) async {
     await backingStore.save(sessionKey, data, expiry);
     _cache[sessionKey] = Map.from(data);
     _cacheExpiry[sessionKey] = DateTime.now().add(cacheTimeout);

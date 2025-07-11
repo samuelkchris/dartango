@@ -44,25 +44,25 @@ class CliRunner {
   Future<int> run(List<String> arguments) async {
     try {
       final results = _argParser.parse(arguments);
-      
+
       if (results['help'] as bool) {
         _showHelp();
         return 0;
       }
-      
+
       if (results['version'] as bool) {
         _showVersion();
         return 0;
       }
-      
+
       if (results.rest.isEmpty) {
         _showHelp();
         return 1;
       }
-      
+
       final commandName = results.rest[0];
       final commandArgs = results.rest.sublist(1);
-      
+
       await _commandManager.run([commandName, ...commandArgs]);
       return 0;
     } on FormatException catch (e) {
@@ -87,18 +87,19 @@ class CliRunner {
     print('');
     print('Available commands:');
     print('');
-    
+
     final commands = _commandManager.commands;
-    final maxNameLength = commands.fold(0, (max, cmd) => 
-        cmd.name.length > max ? cmd.name.length : max);
-    
+    final maxNameLength = commands.fold(
+        0, (max, cmd) => cmd.name.length > max ? cmd.name.length : max);
+
     for (final command in commands) {
       final name = command.name.padRight(maxNameLength);
       print('  $name  ${command.description}');
     }
-    
+
     print('');
-    print('Run "dartango help <command>" for more information about a command.');
+    print(
+        'Run "dartango help <command>" for more information about a command.');
   }
 
   void _showVersion() {
