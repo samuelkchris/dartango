@@ -266,47 +266,6 @@ rm -rf ~/.dartango
 # export PATH="$DARTANGO_HOME/bin:$PATH"
 ```
 
-## 🏗️ Development Setup (Contributors)
-
-If you're contributing to Dartango itself:
-
-```bash
-# Clone the repository
-git clone https://github.com/dartango/framework.git
-cd dartango
-
-# Install melos for workspace management
-dart pub global activate melos
-
-# Bootstrap the workspace
-melos bootstrap
-
-# Run tests
-melos test
-
-# Run example
-melos run:example
-```
-
-## 📋 Core Framework Features
-
-### Complete Django Feature Parity
-- **MTV Architecture**: Model-Template-View pattern
-- **ORM with Active Record**: Full-featured database abstraction
-- **Request/Response Pipeline**: Middleware system
-- **URL Routing**: Regex-based routing with named patterns
-- **Template Engine**: Django-compatible template syntax
-- **Admin Interface**: Auto-generated CRUD interfaces
-- **Authentication**: User model with permissions
-- **Forms Framework**: Declarative form definitions
-- **Static File Handling**: Development and production serving
-- **Database Migrations**: Automatic schema migrations
-- **Multiple Database Backends**: PostgreSQL, MySQL, SQLite
-- **Caching**: Memory, Redis, Memcached support
-- **Security**: CSRF, XSS, SQL injection protection
-- **Development Tools**: CLI management, debug toolbar
-- **Production Features**: ASGI server, connection pooling
-
 ---
 
 **🐍 Django for Dart developers** - Build modern web applications with the power of Dart and the elegance of Django!

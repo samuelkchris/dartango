@@ -103,7 +103,36 @@ class CliRunner {
   }
 
   void _showVersion() {
-    print('Dartango CLI version 0.0.1');
-    print('Dart SDK version: ${Platform.version}');
+    // Try to get version from SDK installation
+    final dartangoHome = Platform.environment['DARTANGO_HOME'] ?? 
+                        '${Platform.environment['HOME']}/.dartango';
+    final versionFile = File('$dartangoHome/VERSION');
+    
+    String frameworkVersion = '1.0.0';
+    if (versionFile.existsSync()) {
+      frameworkVersion = versionFile.readAsStringSync().trim();
+    }
+    
+    print('🐍 Dartango Framework SDK');
+    print('');
+    print('Framework version: $frameworkVersion');
+    print('CLI version: 1.0.0');
+    print('Dart SDK: ${Platform.version.split(' ')[0]}');
+    
+    // Check Flutter version if available
+    try {
+      final result = Process.runSync('flutter', ['--version']);
+      if (result.exitCode == 0) {
+        final flutterVersion = result.stdout.toString().split('\n')[0];
+        print('Flutter: ${flutterVersion.replaceAll('Flutter ', '')}');
+      }
+    } catch (e) {
+      print('Flutter: Not installed');
+    }
+    
+    print('');
+    print('Install location: $dartangoHome');
+    print('');
+    print('🚀 Django for Dart developers');
   }
 }
