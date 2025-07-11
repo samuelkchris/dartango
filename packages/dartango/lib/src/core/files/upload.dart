@@ -24,26 +24,27 @@ class UploadedFile {
 
   String get extension => path.extension(originalName ?? name);
   String get baseName => path.basenameWithoutExtension(originalName ?? name);
-  
+
   bool get isImage => contentType.startsWith('image/');
   bool get isVideo => contentType.startsWith('video/');
   bool get isAudio => contentType.startsWith('audio/');
   bool get isText => contentType.startsWith('text/');
   bool get isPdf => contentType == 'application/pdf';
   bool get isDocument => [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  ].contains(contentType);
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      ].contains(contentType);
 
   String get humanReadableSize {
     if (size < 1024) return '$size B';
     if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
-    if (size < 1024 * 1024 * 1024) return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (size < 1024 * 1024 * 1024)
+      return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
     return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
@@ -205,7 +206,7 @@ class FileUploadHandler {
     final extension = path.extension(originalName);
     final baseName = path.basenameWithoutExtension(originalName);
     final random = DateTime.now().microsecondsSinceEpoch % 10000;
-    
+
     return '${baseName}_${timestamp}_$random$extension';
   }
 
@@ -213,7 +214,7 @@ class FileUploadHandler {
     List<Map<String, dynamic>> files,
   ) async {
     final results = <FileUploadResult>[];
-    
+
     for (final fileData in files) {
       final result = await handleUpload(
         fileData['field_name'] as String,
@@ -223,7 +224,7 @@ class FileUploadHandler {
       );
       results.add(result);
     }
-    
+
     return results;
   }
 }
@@ -301,39 +302,39 @@ class FileStorage {
   static Future<String> move(String sourcePath, String destinationPath) async {
     final sourceFile = File(sourcePath);
     final destinationFile = File(destinationPath);
-    
+
     await destinationFile.create(recursive: true);
     await sourceFile.copy(destinationPath);
     await sourceFile.delete();
-    
+
     return destinationPath;
   }
 
   static Future<List<String>> listFiles(String directory) async {
     final dir = Directory(directory);
     if (!await dir.exists()) return [];
-    
+
     final files = <String>[];
     await for (final entity in dir.list()) {
       if (entity is File) {
         files.add(entity.path);
       }
     }
-    
+
     return files;
   }
 
   static Future<int> getDirectorySize(String directory) async {
     final dir = Directory(directory);
     if (!await dir.exists()) return 0;
-    
+
     int totalSize = 0;
     await for (final entity in dir.list(recursive: true)) {
       if (entity is File) {
         totalSize += await entity.length();
       }
     }
-    
+
     return totalSize;
   }
 }
@@ -351,7 +352,7 @@ class FileUploadMiddleware {
     Map<String, dynamic> multipartData,
   ) async {
     final results = <String, FileUploadResult>{};
-    
+
     for (final entry in multipartData.entries) {
       if (entry.value is Map<String, dynamic>) {
         final fileData = entry.value as Map<String, dynamic>;
@@ -366,25 +367,24 @@ class FileUploadMiddleware {
         }
       }
     }
-    
+
     return results;
   }
 }
 
 extension FileUploadExtensions on Map<String, dynamic> {
   bool get hasFiles {
-    return values.any((value) => 
-      value is Map<String, dynamic> && 
-      value.containsKey('bytes') && 
-      value.containsKey('filename')
-    );
+    return values.any((value) =>
+        value is Map<String, dynamic> &&
+        value.containsKey('bytes') &&
+        value.containsKey('filename'));
   }
-  
+
   List<String> get fileFields {
     return entries
-        .where((entry) => 
-          entry.value is Map<String, dynamic> && 
-          (entry.value as Map<String, dynamic>).containsKey('bytes'))
+        .where((entry) =>
+            entry.value is Map<String, dynamic> &&
+            (entry.value as Map<String, dynamic>).containsKey('bytes'))
         .map((entry) => entry.key)
         .toList();
   }

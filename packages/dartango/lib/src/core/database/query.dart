@@ -1,4 +1,3 @@
-
 class QueryResult {
   final int? affectedRows;
   final int? insertId;
@@ -15,13 +14,13 @@ class QueryResult {
   bool get isEmpty => rows.isEmpty;
   bool get isNotEmpty => rows.isNotEmpty;
   int get length => rows.length;
-  
+
   Map<String, dynamic>? get first => rows.isNotEmpty ? rows.first : null;
   Map<String, dynamic>? get last => rows.isNotEmpty ? rows.last : null;
-  
+
   List<Map<String, dynamic>> take(int count) => rows.take(count).toList();
   List<Map<String, dynamic>> skip(int count) => rows.skip(count).toList();
-  
+
   QueryResult where(bool Function(Map<String, dynamic>) test) {
     return QueryResult(
       affectedRows: affectedRows,
@@ -30,7 +29,7 @@ class QueryResult {
       rows: rows.where(test).toList(),
     );
   }
-  
+
   QueryResult map<T>(T Function(Map<String, dynamic>) mapper) {
     return QueryResult(
       affectedRows: affectedRows,
@@ -58,7 +57,7 @@ class QueryBuilder {
   int? _offset;
   final List<dynamic> _parameters = [];
   String? _rawSql;
-  
+
   set rawSql(String? sql) => _rawSql = sql;
 
   // Public getters for accessing private fields
@@ -71,7 +70,7 @@ class QueryBuilder {
   List<String> get orderByFields => _orderBy;
   int? get limitValue => _limit;
   int? get offsetValue => _offset;
-  
+
   // Setters for limit and offset
   set limitValue(int? value) => _limit = value;
   set offsetValue(int? value) => _offset = value;
@@ -115,7 +114,7 @@ class QueryBuilder {
 
   QueryBuilder whereIn(String column, List<dynamic> values) {
     if (values.isEmpty) return this;
-    
+
     final placeholders = List.filled(values.length, '?').join(', ');
     _where.add('$column IN ($placeholders)');
     _parameters.addAll(values);
@@ -124,7 +123,7 @@ class QueryBuilder {
 
   QueryBuilder whereNotIn(String column, List<dynamic> values) {
     if (values.isEmpty) return this;
-    
+
     final placeholders = List.filled(values.length, '?').join(', ');
     _where.add('$column NOT IN ($placeholders)');
     _parameters.addAll(values);
@@ -211,52 +210,52 @@ class QueryBuilder {
     if (_rawSql != null) {
       return _rawSql!;
     }
-    
+
     final buffer = StringBuffer();
-    
+
     if (_select.isNotEmpty) {
       buffer.write('SELECT ${_select.join(', ')}');
     } else {
       buffer.write('SELECT *');
     }
-    
+
     if (_from.isNotEmpty) {
       buffer.write(' FROM ${_from.join(', ')}');
     }
-    
+
     if (_joins.isNotEmpty) {
       buffer.write(' ${_joins.join(' ')}');
     }
-    
+
     if (_where.isNotEmpty) {
       buffer.write(' WHERE ${_where.join(' AND ')}');
     }
-    
+
     if (_groupBy.isNotEmpty) {
       buffer.write(' GROUP BY ${_groupBy.join(', ')}');
     }
-    
+
     if (_having.isNotEmpty) {
       buffer.write(' HAVING ${_having.join(' AND ')}');
     }
-    
+
     if (_orderBy.isNotEmpty) {
       buffer.write(' ORDER BY ${_orderBy.join(', ')}');
     }
-    
+
     if (_limit != null) {
       buffer.write(' LIMIT $_limit');
     }
-    
+
     if (_offset != null) {
       buffer.write(' OFFSET $_offset');
     }
-    
+
     return buffer.toString();
   }
 
   List<dynamic> get parameters => List.unmodifiable(_parameters);
-  
+
   List<dynamic> get mutableParameters => _parameters;
 
   QueryBuilder clone() {
@@ -310,32 +309,33 @@ class InsertQueryBuilder {
 
   String toSql() {
     final buffer = StringBuffer();
-    
+
     if (_ignore) {
       buffer.write('INSERT IGNORE INTO $_table');
     } else {
       buffer.write('INSERT INTO $_table');
     }
-    
+
     if (_bulkValues.isNotEmpty) {
       final columns = _bulkValues.first.keys.toList();
       buffer.write(' (${columns.join(', ')})');
-      
+
       final placeholders = List.filled(columns.length, '?').join(', ');
-      final valuesList = List.filled(_bulkValues.length, '($placeholders)').join(', ');
+      final valuesList =
+          List.filled(_bulkValues.length, '($placeholders)').join(', ');
       buffer.write(' VALUES $valuesList');
     } else if (_values.isNotEmpty) {
       final columns = _values.keys.toList();
       buffer.write(' (${columns.join(', ')})');
-      
+
       final placeholders = List.filled(columns.length, '?').join(', ');
       buffer.write(' VALUES ($placeholders)');
     }
-    
+
     if (_onConflict != null) {
       buffer.write(' $_onConflict');
     }
-    
+
     return buffer.toString();
   }
 
@@ -378,14 +378,14 @@ class UpdateQueryBuilder {
   String toSql() {
     final buffer = StringBuffer();
     buffer.write('UPDATE $_table SET ');
-    
+
     final assignments = _values.keys.map((key) => '$key = ?').join(', ');
     buffer.write(assignments);
-    
+
     if (_where.isNotEmpty) {
       buffer.write(' WHERE ${_where.join(' AND ')}');
     }
-    
+
     return buffer.toString();
   }
 
@@ -418,11 +418,11 @@ class DeleteQueryBuilder {
   String toSql() {
     final buffer = StringBuffer();
     buffer.write('DELETE FROM $_table');
-    
+
     if (_where.isNotEmpty) {
       buffer.write(' WHERE ${_where.join(' AND ')}');
     }
-    
+
     return buffer.toString();
   }
 
@@ -498,7 +498,8 @@ class WindowFunction {
   final List<String> orderBy;
   final String? frame;
 
-  WindowFunction(this.function, {
+  WindowFunction(
+    this.function, {
     this.partitionBy = const [],
     this.orderBy = const [],
     this.frame,
@@ -507,21 +508,21 @@ class WindowFunction {
   String toSql() {
     final buffer = StringBuffer();
     buffer.write('$function OVER (');
-    
+
     if (partitionBy.isNotEmpty) {
       buffer.write('PARTITION BY ${partitionBy.join(', ')}');
     }
-    
+
     if (orderBy.isNotEmpty) {
       if (partitionBy.isNotEmpty) buffer.write(' ');
       buffer.write('ORDER BY ${orderBy.join(', ')}');
     }
-    
+
     if (frame != null) {
       if (partitionBy.isNotEmpty || orderBy.isNotEmpty) buffer.write(' ');
       buffer.write(frame);
     }
-    
+
     buffer.write(')');
     return buffer.toString();
   }

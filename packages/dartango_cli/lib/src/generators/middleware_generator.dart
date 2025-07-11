@@ -17,7 +17,8 @@ class MiddlewareGenerator {
     await middlewareDir.create(recursive: true);
 
     final middlewareFileName = '${_toSnakeCase(name)}.dart';
-    final middlewareFile = File(path.join(middlewareDir.path, middlewareFileName));
+    final middlewareFile =
+        File(path.join(middlewareDir.path, middlewareFileName));
 
     if (await middlewareFile.exists() && !force) {
       throw Exception('Middleware file already exists: ${middlewareFile.path}');
@@ -308,13 +309,15 @@ app.middleware.add($className());
   String _toPascalCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join('');
   }
 
   String _toSnakeCase(String input) {
     return input
-        .replaceAllMapped(RegExp(r'([A-Z])'), (match) => '_${match.group(1)!.toLowerCase()}')
+        .replaceAllMapped(
+            RegExp(r'([A-Z])'), (match) => '_${match.group(1)!.toLowerCase()}')
         .replaceFirst(RegExp(r'^_'), '')
         .toLowerCase();
   }
@@ -322,7 +325,8 @@ app.middleware.add($className());
   String _toTitleCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join(' ');
   }
 }

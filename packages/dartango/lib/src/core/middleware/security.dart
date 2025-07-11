@@ -57,7 +57,6 @@ class SecurityMiddleware extends BaseMiddleware {
         frameOptions = frameOptions ?? 'DENY',
         secureProxyHeaders = secureProxyHeaders ?? [];
 
-
   @override
   FutureOr<HttpResponse?> processRequest(HttpRequest request) {
     if ((secureRedirect || secureSslRedirect) && !_isSecure(request)) {
@@ -154,15 +153,15 @@ class SecurityMiddleware extends BaseMiddleware {
 
   String _buildHstsHeader() {
     final parts = ['max-age=${hstsMaxAge!.inSeconds}'];
-    
+
     if (hstsIncludeSubdomains) {
       parts.add('includeSubDomains');
     }
-    
+
     if (hstsPreload) {
       parts.add('preload');
     }
-    
+
     return parts.join('; ');
   }
 
@@ -213,7 +212,8 @@ class CorsMiddleware extends BaseMiddleware {
     bool? allowAllMethods,
     bool? allowAllHeaders,
   })  : allowedOrigins = allowedOrigins ?? [],
-        allowedMethods = allowedMethods ?? ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
+        allowedMethods = allowedMethods ??
+            ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
         allowedHeaders = allowedHeaders ?? [],
         exposedHeaders = exposedHeaders ?? [],
         allowCredentials = allowCredentials ?? false,
@@ -240,14 +240,17 @@ class CorsMiddleware extends BaseMiddleware {
     }
 
     if (_isAllowedOrigin(origin)) {
-      response = response.setHeader('Access-Control-Allow-Origin', allowAllOrigins ? '*' : origin);
-      
+      response = response.setHeader(
+          'Access-Control-Allow-Origin', allowAllOrigins ? '*' : origin);
+
       if (allowCredentials && !allowAllOrigins) {
-        response = response.setHeader('Access-Control-Allow-Credentials', 'true');
+        response =
+            response.setHeader('Access-Control-Allow-Credentials', 'true');
       }
-      
+
       if (exposedHeaders.isNotEmpty) {
-        response = response.setHeader('Access-Control-Expose-Headers', exposedHeaders.join(', '));
+        response = response.setHeader(
+            'Access-Control-Expose-Headers', exposedHeaders.join(', '));
       }
     }
 
@@ -261,39 +264,46 @@ class CorsMiddleware extends BaseMiddleware {
     }
 
     var response = HttpResponse.noContent();
-    
-    response = response.setHeader('Access-Control-Allow-Origin', allowAllOrigins ? '*' : origin);
-    
+
+    response = response.setHeader(
+        'Access-Control-Allow-Origin', allowAllOrigins ? '*' : origin);
+
     if (allowCredentials && !allowAllOrigins) {
       response = response.setHeader('Access-Control-Allow-Credentials', 'true');
     }
-    
+
     final requestedMethod = request.headers['access-control-request-method'];
     if (requestedMethod != null) {
       if (allowAllMethods || allowedMethods.contains(requestedMethod)) {
-        response = response.setHeader('Access-Control-Allow-Methods', allowAllMethods ? '*' : allowedMethods.join(', '));
+        response = response.setHeader('Access-Control-Allow-Methods',
+            allowAllMethods ? '*' : allowedMethods.join(', '));
       } else {
         return HttpResponse.forbidden('Method not allowed by CORS policy');
       }
     }
-    
+
     final requestedHeaders = request.headers['access-control-request-headers'];
     if (requestedHeaders != null) {
       if (allowAllHeaders) {
-        response = response.setHeader('Access-Control-Allow-Headers', requestedHeaders);
+        response = response.setHeader(
+            'Access-Control-Allow-Headers', requestedHeaders);
       } else {
-        final headersList = requestedHeaders.split(',').map((h) => h.trim()).toList();
-        final allowedHeadersList = headersList.where((h) => allowedHeaders.contains(h)).toList();
+        final headersList =
+            requestedHeaders.split(',').map((h) => h.trim()).toList();
+        final allowedHeadersList =
+            headersList.where((h) => allowedHeaders.contains(h)).toList();
         if (allowedHeadersList.isNotEmpty) {
-          response = response.setHeader('Access-Control-Allow-Headers', allowedHeadersList.join(', '));
+          response = response.setHeader(
+              'Access-Control-Allow-Headers', allowedHeadersList.join(', '));
         }
       }
     }
-    
+
     if (maxAge != null) {
-      response = response.setHeader('Access-Control-Max-Age', maxAge!.inSeconds.toString());
+      response = response.setHeader(
+          'Access-Control-Max-Age', maxAge!.inSeconds.toString());
     }
-    
+
     return response;
   }
 
@@ -301,7 +311,7 @@ class CorsMiddleware extends BaseMiddleware {
     if (allowAllOrigins) {
       return true;
     }
-    
+
     for (final allowed in allowedOrigins) {
       if (allowed == origin) {
         return true;
@@ -313,7 +323,7 @@ class CorsMiddleware extends BaseMiddleware {
         }
       }
     }
-    
+
     return false;
   }
 }
@@ -355,32 +365,32 @@ class ContentSecurityPolicyMiddleware extends BaseMiddleware {
     HttpResponse response,
   ) {
     final cspValue = _buildCspValue();
-    final headerName = reportOnly 
-        ? 'Content-Security-Policy-Report-Only' 
+    final headerName = reportOnly
+        ? 'Content-Security-Policy-Report-Only'
         : 'Content-Security-Policy';
-    
+
     return response.setHeader(headerName, cspValue);
   }
 
   String _buildCspValue() {
     final parts = <String>[];
-    
+
     for (final entry in directives.entries) {
       parts.add('${entry.key} ${entry.value}');
     }
-    
+
     if (upgradeInsecureRequests) {
       parts.add('upgrade-insecure-requests');
     }
-    
+
     if (blockAllMixedContent) {
       parts.add('block-all-mixed-content');
     }
-    
+
     if (reportUri != null) {
       parts.add('report-uri $reportUri');
     }
-    
+
     return parts.join('; ');
   }
 }

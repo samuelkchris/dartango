@@ -8,14 +8,15 @@ import 'query.dart';
 
 abstract class DatabaseConnection {
   Future<QueryResult> execute(String sql, [List<dynamic>? parameters]);
-  Future<List<Map<String, dynamic>>> query(String sql, [List<dynamic>? parameters]);
+  Future<List<Map<String, dynamic>>> query(String sql,
+      [List<dynamic>? parameters]);
   Future<T> transaction<T>(Future<T> Function(DatabaseConnection) callback);
   Future<void> close();
-  
+
   bool get isOpen;
   String get databaseName;
   DatabaseBackend get backend;
-  
+
   Future<void> ping();
   Future<Map<String, dynamic>> getServerInfo();
   Future<List<String>> getTableNames();
@@ -178,13 +179,13 @@ class ConnectionPool {
     if (_availableConnections.isNotEmpty) {
       final pooledConnection = _availableConnections.removeAt(0);
       _usedConnections.add(pooledConnection);
-      
+
       if (!pooledConnection.connection.isOpen) {
         await pooledConnection.connection.close();
         _usedConnections.remove(pooledConnection);
         return acquire();
       }
-      
+
       return pooledConnection.connection;
     }
 
@@ -205,7 +206,7 @@ class ConnectionPool {
     );
 
     _usedConnections.remove(pooledConnection);
-    
+
     if (connection.isOpen && !_isShuttingDown) {
       pooledConnection.lastUsed = DateTime.now();
       _availableConnections.add(pooledConnection);
@@ -259,7 +260,8 @@ class ConnectionPool {
 
   int get availableConnections => _availableConnections.length;
   int get usedConnections => _usedConnections.length;
-  int get totalConnections => _availableConnections.length + _usedConnections.length;
+  int get totalConnections =>
+      _availableConnections.length + _usedConnections.length;
 }
 
 class _PooledConnection {
@@ -285,7 +287,7 @@ class PostgreSQLConnection implements DatabaseConnection {
         username: config.username,
         password: config.password,
       );
-      
+
       final settings = ConnectionSettings(
         sslMode: config.enableSsl ? SslMode.require : SslMode.disable,
         connectTimeout: config.connectionTimeout,
@@ -293,7 +295,7 @@ class PostgreSQLConnection implements DatabaseConnection {
         timeZone: config.timezone,
         applicationName: 'Dartango',
       );
-      
+
       _connection = await Connection.open(endpoint, settings: settings);
     } catch (e) {
       throw DatabaseException('Failed to connect to PostgreSQL: $e');
@@ -303,22 +305,22 @@ class PostgreSQLConnection implements DatabaseConnection {
   @override
   Future<QueryResult> execute(String sql, [List<dynamic>? parameters]) async {
     if (!isOpen) await _connect();
-    
+
     try {
       final result = await _connection!.execute(
         sql,
         parameters: parameters ?? const [],
       );
-      
+
       final rows = <Map<String, dynamic>>[];
       final columns = <String>[];
-      
+
       if (result.isNotEmpty) {
         // Get column names from first row
         for (int i = 0; i < result.first.length; i++) {
           columns.add('column_$i'); // We'll use generic names for now
         }
-        
+
         for (final row in result) {
           final rowMap = <String, dynamic>{};
           for (int i = 0; i < row.length; i++) {
@@ -327,7 +329,7 @@ class PostgreSQLConnection implements DatabaseConnection {
           rows.add(rowMap);
         }
       }
-      
+
       return QueryResult(
         affectedRows: result.affectedRows,
         insertId: null,
@@ -344,13 +346,15 @@ class PostgreSQLConnection implements DatabaseConnection {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> query(String sql, [List<dynamic>? parameters]) async {
+  Future<List<Map<String, dynamic>>> query(String sql,
+      [List<dynamic>? parameters]) async {
     final result = await execute(sql, parameters);
     return result.rows;
   }
 
   @override
-  Future<T> transaction<T>(Future<T> Function(DatabaseConnection) callback) async {
+  Future<T> transaction<T>(
+      Future<T> Function(DatabaseConnection) callback) async {
     if (_inTransaction) {
       return await callback(this);
     }
@@ -423,9 +427,8 @@ class PostgreSQLConnection implements DatabaseConnection {
   @override
   Future<List<String>> getTableNames() async {
     if (!isOpen) await _connect();
-    final result = await _connection!.execute(
-      "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
-    );
+    final result = await _connection!
+        .execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public'");
     return result.map((row) => row[0] as String).toList();
   }
 
@@ -441,13 +444,15 @@ class PostgreSQLConnection implements DatabaseConnection {
       ''',
       parameters: {'tableName': tableName},
     );
-    
-    return result.map((row) => {
-      'column_name': row[0],
-      'data_type': row[1],
-      'is_nullable': row[2],
-      'column_default': row[3],
-    }).toList();
+
+    return result
+        .map((row) => {
+              'column_name': row[0],
+              'data_type': row[1],
+              'is_nullable': row[2],
+              'column_default': row[3],
+            })
+        .toList();
   }
 
   @override
@@ -461,11 +466,13 @@ class PostgreSQLConnection implements DatabaseConnection {
       ''',
       parameters: {'tableName': tableName},
     );
-    
-    return result.map((row) => {
-      'indexname': row[0],
-      'indexdef': row[1],
-    }).toList();
+
+    return result
+        .map((row) => {
+              'indexname': row[0],
+              'indexdef': row[1],
+            })
+        .toList();
   }
 
   @override
@@ -508,14 +515,16 @@ class MySQLConnection implements DatabaseConnection {
   @override
   Future<QueryResult> execute(String sql, [List<dynamic>? parameters]) async {
     if (!_isOpen) await _connect();
-    
+
     try {
       await Future.delayed(Duration(milliseconds: 10));
       return QueryResult(
         affectedRows: 1,
         insertId: 1,
         columns: ['id', 'name'],
-        rows: [{'id': 1, 'name': 'test'}],
+        rows: [
+          {'id': 1, 'name': 'test'}
+        ],
       );
     } catch (e) {
       if (config.autoReconnect && !_isOpen) {
@@ -527,13 +536,15 @@ class MySQLConnection implements DatabaseConnection {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> query(String sql, [List<dynamic>? parameters]) async {
+  Future<List<Map<String, dynamic>>> query(String sql,
+      [List<dynamic>? parameters]) async {
     final result = await execute(sql, parameters);
     return result.rows;
   }
 
   @override
-  Future<T> transaction<T>(Future<T> Function(DatabaseConnection) callback) async {
+  Future<T> transaction<T>(
+      Future<T> Function(DatabaseConnection) callback) async {
     if (_inTransaction) {
       return await callback(this);
     }
@@ -602,15 +613,35 @@ class MySQLConnection implements DatabaseConnection {
   @override
   Future<List<Map<String, dynamic>>> getTableSchema(String tableName) async {
     return [
-      {'Field': 'id', 'Type': 'int(11)', 'Null': 'NO', 'Key': 'PRI', 'Default': null, 'Extra': 'auto_increment'},
-      {'Field': 'name', 'Type': 'varchar(255)', 'Null': 'YES', 'Key': '', 'Default': null, 'Extra': ''},
+      {
+        'Field': 'id',
+        'Type': 'int(11)',
+        'Null': 'NO',
+        'Key': 'PRI',
+        'Default': null,
+        'Extra': 'auto_increment'
+      },
+      {
+        'Field': 'name',
+        'Type': 'varchar(255)',
+        'Null': 'YES',
+        'Key': '',
+        'Default': null,
+        'Extra': ''
+      },
     ];
   }
 
   @override
   Future<List<Map<String, dynamic>>> getIndexes(String tableName) async {
     return [
-      {'Table': tableName, 'Non_unique': 0, 'Key_name': 'PRIMARY', 'Seq_in_index': 1, 'Column_name': 'id'},
+      {
+        'Table': tableName,
+        'Non_unique': 0,
+        'Key_name': 'PRIMARY',
+        'Seq_in_index': 1,
+        'Column_name': 'id'
+      },
     ];
   }
 
@@ -654,15 +685,15 @@ class SQLiteConnection implements DatabaseConnection {
   @override
   Future<QueryResult> execute(String sql, [List<dynamic>? parameters]) async {
     if (!isOpen) await _connect();
-    
+
     try {
       final stmt = _database!.prepare(sql);
-      
+
       int affectedRows = 0;
       int? insertId;
       final rows = <Map<String, dynamic>>[];
       final columns = <String>[];
-      
+
       if (sql.trim().toUpperCase().startsWith('SELECT')) {
         final result = stmt.select(parameters ?? []);
         columns.addAll(result.columnNames);
@@ -680,9 +711,9 @@ class SQLiteConnection implements DatabaseConnection {
           insertId = _database!.lastInsertRowId;
         }
       }
-      
+
       stmt.dispose();
-      
+
       return QueryResult(
         affectedRows: affectedRows,
         insertId: insertId,
@@ -695,13 +726,15 @@ class SQLiteConnection implements DatabaseConnection {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> query(String sql, [List<dynamic>? parameters]) async {
+  Future<List<Map<String, dynamic>>> query(String sql,
+      [List<dynamic>? parameters]) async {
     final result = await execute(sql, parameters);
     return result.rows;
   }
 
   @override
-  Future<T> transaction<T>(Future<T> Function(DatabaseConnection) callback) async {
+  Future<T> transaction<T>(
+      Future<T> Function(DatabaseConnection) callback) async {
     if (_inTransaction) {
       return await callback(this);
     }
@@ -774,7 +807,8 @@ class SQLiteConnection implements DatabaseConnection {
   @override
   Future<List<String>> getTableNames() async {
     if (!isOpen) await _connect();
-    final result = _database!.select("SELECT name FROM sqlite_master WHERE type='table'");
+    final result =
+        _database!.select("SELECT name FROM sqlite_master WHERE type='table'");
     return result.map((row) => row[0] as String).toList();
   }
 
@@ -782,29 +816,33 @@ class SQLiteConnection implements DatabaseConnection {
   Future<List<Map<String, dynamic>>> getTableSchema(String tableName) async {
     if (!isOpen) await _connect();
     final result = _database!.select('PRAGMA table_info($tableName)');
-    
-    return result.map((row) => {
-      'cid': row[0],
-      'name': row[1],
-      'type': row[2],
-      'notnull': row[3],
-      'dflt_value': row[4],
-      'pk': row[5],
-    }).toList();
+
+    return result
+        .map((row) => {
+              'cid': row[0],
+              'name': row[1],
+              'type': row[2],
+              'notnull': row[3],
+              'dflt_value': row[4],
+              'pk': row[5],
+            })
+        .toList();
   }
 
   @override
   Future<List<Map<String, dynamic>>> getIndexes(String tableName) async {
     if (!isOpen) await _connect();
     final result = _database!.select('PRAGMA index_list($tableName)');
-    
-    return result.map((row) => {
-      'seq': row[0],
-      'name': row[1],
-      'unique': row[2],
-      'origin': row[3],
-      'partial': row[4],
-    }).toList();
+
+    return result
+        .map((row) => {
+              'seq': row[0],
+              'name': row[1],
+              'unique': row[2],
+              'origin': row[3],
+              'partial': row[4],
+            })
+        .toList();
   }
 
   @override
@@ -854,7 +892,8 @@ class DatabaseRouter {
     return await pool.acquire();
   }
 
-  static Future<void> releaseConnection(DatabaseConnection connection, [String? database]) async {
+  static Future<void> releaseConnection(DatabaseConnection connection,
+      [String? database]) async {
     final pool = getPool(database);
     await pool.release(connection);
   }

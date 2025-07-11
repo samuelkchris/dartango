@@ -62,8 +62,8 @@ class CsrfViewMiddleware extends BaseMiddleware {
         exemptUrls = exemptUrls ?? false,
         exemptUrlPatterns = exemptUrlPatterns ?? [],
         exemptViews = exemptViews ?? [],
-        reasonForFailure = reasonForFailure ?? 'CSRF verification failed. Request aborted.';
-
+        reasonForFailure =
+            reasonForFailure ?? 'CSRF verification failed. Request aborted.';
 
   @override
   FutureOr<HttpResponse?> processView(
@@ -120,9 +120,9 @@ class CsrfViewMiddleware extends BaseMiddleware {
     if (request.middlewareState['csrf_exempt'] == true) {
       return true;
     }
-    
+
     final path = request.uri.path;
-    
+
     if (exemptUrls) {
       for (final pattern in exemptUrlPatterns) {
         if (RegExp(pattern).hasMatch(path)) {
@@ -227,8 +227,8 @@ class CsrfViewMiddleware extends BaseMiddleware {
 
     for (final trustedOrigin in trustedOrigins) {
       final trustedUri = Uri.tryParse(trustedOrigin);
-      if (trustedUri != null && 
-          refererUri.host == trustedUri.host && 
+      if (trustedUri != null &&
+          refererUri.host == trustedUri.host &&
           refererUri.scheme == trustedUri.scheme) {
         return true;
       }
@@ -249,7 +249,7 @@ class CsrfViewMiddleware extends BaseMiddleware {
     }
 
     final token = _generateCsrfToken();
-    
+
     final session = request.middlewareState['session'] as Session?;
     if (session != null) {
       session['_csrf_token'] = token;
@@ -266,7 +266,7 @@ class CsrfViewMiddleware extends BaseMiddleware {
 
   HttpResponse _setCsrfCookie(HttpResponse response, String token) {
     final expires = cookieAge != null ? DateTime.now().add(cookieAge!) : null;
-    
+
     return response.setCookie(
       cookieName,
       token,
@@ -295,7 +295,7 @@ class CsrfViewMiddleware extends BaseMiddleware {
         );
       }
     }
-    
+
     return HttpResponse(
       reasonForFailure,
       statusCode: 403,
@@ -340,7 +340,7 @@ class CsrfTokenStorage {
   final Map<String, CsrfToken> _tokens = {};
   final Duration _maxAge;
 
-  CsrfTokenStorage({Duration? maxAge}) 
+  CsrfTokenStorage({Duration? maxAge})
       : _maxAge = maxAge ?? const Duration(hours: 24);
 
   void store(String key, CsrfToken token) {
@@ -360,13 +360,13 @@ class CsrfTokenStorage {
   void _cleanupExpired() {
     final now = DateTime.now();
     final expiredKeys = <String>[];
-    
+
     for (final entry in _tokens.entries) {
       if (now.difference(entry.value.created) > _maxAge) {
         expiredKeys.add(entry.key);
       }
     }
-    
+
     for (final key in expiredKeys) {
       _tokens.remove(key);
     }

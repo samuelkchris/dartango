@@ -4,7 +4,8 @@ import '../http/request.dart';
 import '../http/response.dart';
 import 'converters.dart';
 
-typedef ViewFunction = FutureOr<HttpResponse> Function(HttpRequest request, Map<String, String> kwargs);
+typedef ViewFunction = FutureOr<HttpResponse> Function(
+    HttpRequest request, Map<String, String> kwargs);
 
 class ResolverMatch {
   final ViewFunction func;
@@ -82,7 +83,8 @@ class URLResolver {
     return null;
   }
 
-  String? reverse(String viewName, {Map<String, String>? kwargs, List<String>? args}) {
+  String? reverse(String viewName,
+      {Map<String, String>? kwargs, List<String>? args}) {
     final namespaces = <String>[];
     if (namespace != null) {
       namespaces.add(namespace!);
@@ -98,7 +100,8 @@ class URLResolver {
     }
 
     for (final pattern in urlPatterns) {
-      final url = pattern.reverse(targetViewName, kwargs: kwargs, args: args, namespaces: namespaces);
+      final url = pattern.reverse(targetViewName,
+          kwargs: kwargs, args: args, namespaces: namespaces);
       if (url != null) {
         return url;
       }
@@ -116,9 +119,12 @@ abstract class URLPattern {
   String get pattern;
   String? get name;
   List<String> get allowedMethods;
-  
+
   ResolverMatch? resolve(String path);
-  String? reverse(String viewName, {Map<String, String>? kwargs, List<String>? args, List<String>? namespaces});
+  String? reverse(String viewName,
+      {Map<String, String>? kwargs,
+      List<String>? args,
+      List<String>? namespaces});
 }
 
 class Route extends URLPattern {
@@ -137,10 +143,19 @@ class Route extends URLPattern {
     required this.pattern,
     required this.view,
     this.name,
-    this.allowedMethods = const ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE'],
-  }) : _regex = compilePattern(pattern).$1,
-       _groupNames = compilePattern(pattern).$2,
-       _converters = extractConverters(pattern);
+    this.allowedMethods = const [
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+      'PATCH',
+      'HEAD',
+      'OPTIONS',
+      'TRACE'
+    ],
+  })  : _regex = compilePattern(pattern).$1,
+        _groupNames = compilePattern(pattern).$2,
+        _converters = extractConverters(pattern);
 
   static (RegExp, List<String>) compilePattern(String pattern) {
     final groupNames = <String>[];
@@ -155,7 +170,8 @@ class Route extends URLPattern {
       groupNames.add(parameter);
 
       final converterPattern = PathConverter.getConverter(converter).pattern;
-      regexPattern = regexPattern.replaceFirst(match.group(0)!, '(?<$parameter>$converterPattern)');
+      regexPattern = regexPattern.replaceFirst(
+          match.group(0)!, '(?<$parameter>$converterPattern)');
     }
 
     regexPattern = '^$regexPattern\$';
@@ -214,7 +230,10 @@ class Route extends URLPattern {
   }
 
   @override
-  String? reverse(String viewName, {Map<String, String>? kwargs, List<String>? args, List<String>? namespaces}) {
+  String? reverse(String viewName,
+      {Map<String, String>? kwargs,
+      List<String>? args,
+      List<String>? namespaces}) {
     if (name != viewName) return null;
 
     String url = pattern;
@@ -228,7 +247,8 @@ class Route extends URLPattern {
       if (converter != null) {
         try {
           final convertedValue = converter.convert(value);
-          url = url.replaceAll('<${converter.name}:$groupName>', convertedValue.toString());
+          url = url.replaceAll(
+              '<${converter.name}:$groupName>', convertedValue.toString());
         } catch (e) {
           return null;
         }
@@ -258,7 +278,16 @@ class Include extends URLPattern {
     required this.prefix,
     required this.resolver,
     this.name,
-    this.allowedMethods = const ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE'],
+    this.allowedMethods = const [
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+      'PATCH',
+      'HEAD',
+      'OPTIONS',
+      'TRACE'
+    ],
   });
 
   @override
@@ -285,7 +314,10 @@ class Include extends URLPattern {
   }
 
   @override
-  String? reverse(String viewName, {Map<String, String>? kwargs, List<String>? args, List<String>? namespaces}) {
+  String? reverse(String viewName,
+      {Map<String, String>? kwargs,
+      List<String>? args,
+      List<String>? namespaces}) {
     final url = resolver.reverse(viewName, kwargs: kwargs, args: args);
     if (url == null) return null;
 
@@ -295,8 +327,9 @@ class Include extends URLPattern {
 
 class URLConfiguration {
   final URLResolver _resolver;
-  
-  URLConfiguration(List<URLPattern> urlPatterns, {String? appName, String? namespace})
+
+  URLConfiguration(List<URLPattern> urlPatterns,
+      {String? appName, String? namespace})
       : _resolver = URLResolver(
           urlPatterns: urlPatterns,
           appName: appName,
@@ -304,7 +337,8 @@ class URLConfiguration {
         );
 
   ResolverMatch? resolve(String path) => _resolver.resolve(path);
-  String? reverse(String viewName, {Map<String, String>? kwargs, List<String>? args}) => 
+  String? reverse(String viewName,
+          {Map<String, String>? kwargs, List<String>? args}) =>
       _resolver.reverse(viewName, kwargs: kwargs, args: args);
   void clearCache() => _resolver.clearCache();
 }
@@ -323,18 +357,18 @@ URLPattern include(String prefix, URLResolver resolver, {String? name}) {
 
 class NoReverseMatch implements Exception {
   final String message;
-  
+
   const NoReverseMatch(this.message);
-  
+
   @override
   String toString() => 'NoReverseMatch: $message';
 }
 
 class Resolver404 implements Exception {
   final String message;
-  
+
   const Resolver404(this.message);
-  
+
   @override
   String toString() => 'Resolver404: $message';
 }

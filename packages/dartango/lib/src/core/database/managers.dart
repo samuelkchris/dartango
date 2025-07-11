@@ -7,8 +7,8 @@ import 'queryset.dart';
 abstract class BaseManager<T extends Model> {
   final String _tableName;
   final String? _database;
-  
-  BaseManager(Model model) 
+
+  BaseManager(Model model)
       : _tableName = model.tableName,
         _database = model.database;
 
@@ -22,9 +22,12 @@ abstract class BaseManager<T extends Model> {
 
   // Filtering methods
   QuerySet<T> all() => getQuerySet();
-  QuerySet<T> filter(Map<String, dynamic> filters) => getQuerySet().filter(filters);
-  QuerySet<T> exclude(Map<String, dynamic> filters) => getQuerySet().exclude(filters);
-  QuerySet<T> where(String condition, [List<dynamic>? parameters]) => getQuerySet().where(condition, parameters);
+  QuerySet<T> filter(Map<String, dynamic> filters) =>
+      getQuerySet().filter(filters);
+  QuerySet<T> exclude(Map<String, dynamic> filters) =>
+      getQuerySet().exclude(filters);
+  QuerySet<T> where(String condition, [List<dynamic>? parameters]) =>
+      getQuerySet().where(condition, parameters);
 
   // Ordering methods
   QuerySet<T> orderBy(List<String> fields) => getQuerySet().orderBy(fields);
@@ -39,26 +42,37 @@ abstract class BaseManager<T extends Model> {
   QuerySet<T> only(List<String> fields) => getQuerySet().only(fields);
   QuerySet<T> defer(List<String> fields) => getQuerySet().defer(fields);
   QuerySet<T> selectValues(List<String> fields) => getQuerySet().only(fields);
-  QuerySet<T> selectValuesList(List<String> fields, {bool flat = false}) => getQuerySet().only(fields);
+  QuerySet<T> selectValuesList(List<String> fields, {bool flat = false}) =>
+      getQuerySet().only(fields);
 
   // Distinct methods
-  QuerySet<T> distinct([List<String>? fields]) => getQuerySet().distinct(fields);
+  QuerySet<T> distinct([List<String>? fields]) =>
+      getQuerySet().distinct(fields);
 
   // Relationship methods
-  QuerySet<T> selectRelated(List<String> fields) => getQuerySet().selectRelated(fields);
-  QuerySet<T> prefetchRelated(List<String> fields) => getQuerySet().prefetchRelated(fields);
+  QuerySet<T> selectRelated(List<String> fields) =>
+      getQuerySet().selectRelated(fields);
+  QuerySet<T> prefetchRelated(List<String> fields) =>
+      getQuerySet().prefetchRelated(fields);
 
   // Aggregation methods
-  QuerySet<T> annotate(Map<String, dynamic> annotations) => getQuerySet().annotate(annotations);
-  Future<Map<String, dynamic>> aggregate(Map<String, String> aggregations) => getQuerySet().aggregate(aggregations);
+  QuerySet<T> annotate(Map<String, dynamic> annotations) =>
+      getQuerySet().annotate(annotations);
+  Future<Map<String, dynamic>> aggregate(Map<String, String> aggregations) =>
+      getQuerySet().aggregate(aggregations);
 
   // Execution methods
   Future<T?> first() => getQuerySet().first();
   Future<T?> last() => getQuerySet().last();
   Future<T> get(Map<String, dynamic> filters) => getQuerySet().get(filters);
-  Future<T?> getOrNull(Map<String, dynamic> filters) => getQuerySet().getOrNull(filters);
-  Future<T> getOrCreate(Map<String, dynamic> filters, {Map<String, dynamic>? defaults}) => getQuerySet().getOrCreate(filters, defaults: defaults);
-  Future<MapEntry<T, bool>> updateOrCreate(Map<String, dynamic> filters, {Map<String, dynamic>? defaults}) => getQuerySet().updateOrCreate(filters, defaults: defaults);
+  Future<T?> getOrNull(Map<String, dynamic> filters) =>
+      getQuerySet().getOrNull(filters);
+  Future<T> getOrCreate(Map<String, dynamic> filters,
+          {Map<String, dynamic>? defaults}) =>
+      getQuerySet().getOrCreate(filters, defaults: defaults);
+  Future<MapEntry<T, bool>> updateOrCreate(Map<String, dynamic> filters,
+          {Map<String, dynamic>? defaults}) =>
+      getQuerySet().updateOrCreate(filters, defaults: defaults);
 
   // Existence methods
   Future<bool> exists() => getQuerySet().exists();
@@ -67,12 +81,18 @@ abstract class BaseManager<T extends Model> {
   Future<int> count() => getQuerySet().count();
 
   // Modification methods
-  Future<int> update(Map<String, dynamic> values) => getQuerySet().update(values);
+  Future<int> update(Map<String, dynamic> values) =>
+      getQuerySet().update(values);
   Future<int> delete() => getQuerySet().delete();
 
   // Bulk operations
-  Future<List<T>> bulkCreate(List<Map<String, dynamic>> dataList, {int batchSize = 1000}) => getQuerySet().bulkCreate(dataList, batchSize: batchSize);
-  Future<int> bulkUpdate(List<Map<String, dynamic>> dataList, List<String> updateFields, {int batchSize = 1000}) => getQuerySet().bulkUpdate(dataList, updateFields, batchSize: batchSize);
+  Future<List<T>> bulkCreate(List<Map<String, dynamic>> dataList,
+          {int batchSize = 1000}) =>
+      getQuerySet().bulkCreate(dataList, batchSize: batchSize);
+  Future<int> bulkUpdate(
+          List<Map<String, dynamic>> dataList, List<String> updateFields,
+          {int batchSize = 1000}) =>
+      getQuerySet().bulkUpdate(dataList, updateFields, batchSize: batchSize);
 
   // Raw SQL methods
   Future<List<T>> raw(String sql, [List<dynamic>? parameters]) async {
@@ -86,8 +106,11 @@ abstract class BaseManager<T extends Model> {
   }
 
   // Utility methods
-  Future<List<dynamic>> getValuesList(List<String> fields, {bool flat = false}) => getQuerySet().getValuesList(fields, flat: flat);
-  Future<List<Map<String, dynamic>>> getValues(List<String> fields) => getQuerySet().getValues(fields);
+  Future<List<dynamic>> getValuesList(List<String> fields,
+          {bool flat = false}) =>
+      getQuerySet().getValuesList(fields, flat: flat);
+  Future<List<Map<String, dynamic>>> getValues(List<String> fields) =>
+      getQuerySet().getValues(fields);
 
   // Private helper methods
   T _createModelFromData(Map<String, dynamic> data) {
@@ -225,7 +248,7 @@ class TimestampedManager<T extends Model> extends BaseManager<T> {
     final today = DateTime.now();
     final startOfDay = DateTime(today.year, today.month, today.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
-    
+
     return getQuerySet().filter({
       'created_at__gte': startOfDay,
       'created_at__lt': endOfDay,
@@ -236,7 +259,7 @@ class TimestampedManager<T extends Model> extends BaseManager<T> {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
     final endOfWeek = startOfWeek.add(const Duration(days: 7));
-    
+
     return getQuerySet().filter({
       'created_at__gte': startOfWeek,
       'created_at__lt': endOfWeek,
@@ -247,7 +270,7 @@ class TimestampedManager<T extends Model> extends BaseManager<T> {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
     final endOfMonth = DateTime(now.year, now.month + 1, 1);
-    
+
     return getQuerySet().filter({
       'created_at__gte': startOfMonth,
       'created_at__lt': endOfMonth,
@@ -258,7 +281,7 @@ class TimestampedManager<T extends Model> extends BaseManager<T> {
     final now = DateTime.now();
     final startOfYear = DateTime(now.year, 1, 1);
     final endOfYear = DateTime(now.year + 1, 1, 1);
-    
+
     return getQuerySet().filter({
       'created_at__gte': startOfYear,
       'created_at__lt': endOfYear,
@@ -274,7 +297,8 @@ class HierarchicalManager<T extends Model> extends BaseManager<T> {
   }
 
   QuerySet<T> leaves() {
-    final subquery = 'SELECT parent FROM ${_tableName} WHERE parent IS NOT NULL';
+    final subquery =
+        'SELECT parent FROM ${_tableName} WHERE parent IS NOT NULL';
     return getQuerySet().where('id NOT IN ($subquery)');
   }
 
@@ -310,12 +334,16 @@ class HierarchicalManager<T extends Model> extends BaseManager<T> {
 class GeoManager<T extends Model> extends BaseManager<T> {
   GeoManager(Model model) : super(model);
 
-  QuerySet<T> withinDistance(double latitude, double longitude, double distanceKm) {
-    final distanceClause = '(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) <= ?';
-    return getQuerySet().where(distanceClause, [latitude, longitude, latitude, distanceKm]);
+  QuerySet<T> withinDistance(
+      double latitude, double longitude, double distanceKm) {
+    final distanceClause =
+        '(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) <= ?';
+    return getQuerySet()
+        .where(distanceClause, [latitude, longitude, latitude, distanceKm]);
   }
 
-  QuerySet<T> withinBounds(double northLat, double southLat, double eastLng, double westLng) {
+  QuerySet<T> withinBounds(
+      double northLat, double southLat, double eastLng, double westLng) {
     return getQuerySet().filter({
       'latitude__gte': southLat,
       'latitude__lte': northLat,
@@ -325,8 +353,11 @@ class GeoManager<T extends Model> extends BaseManager<T> {
   }
 
   QuerySet<T> orderByDistance(double latitude, double longitude) {
-    final distanceSelect = '(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) as distance';
-    return getQuerySet().extra(select: [distanceSelect], params: [latitude, longitude, latitude]).orderBy(['distance']);
+    final distanceSelect =
+        '(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) as distance';
+    return getQuerySet().extra(
+        select: [distanceSelect],
+        params: [latitude, longitude, latitude]).orderBy(['distance']);
   }
 }
 
@@ -374,11 +405,13 @@ class VersionedManager<T extends Model> extends BaseManager<T> {
   }
 
   Future<T?> getVersion(dynamic objectId, int version) async {
-    return await getQuerySet().getOrNull({'object_id': objectId, 'version': version});
+    return await getQuerySet()
+        .getOrNull({'object_id': objectId, 'version': version});
   }
 
   Future<T?> getLatestVersion(dynamic objectId) async {
-    return await getQuerySet().filter({'object_id': objectId}).orderBy(['-version']).first();
+    return await getQuerySet()
+        .filter({'object_id': objectId}).orderBy(['-version']).first();
   }
 }
 
@@ -386,7 +419,8 @@ class CachedManager<T extends Model> extends BaseManager<T> {
   final Duration _cacheTimeout;
   final Map<String, CacheEntry<List<T>>> _cache = {};
 
-  CachedManager(Model model, {Duration cacheTimeout = const Duration(minutes: 5)})
+  CachedManager(Model model,
+      {Duration cacheTimeout = const Duration(minutes: 5)})
       : _cacheTimeout = cacheTimeout,
         super(model);
 
@@ -395,7 +429,8 @@ class CachedManager<T extends Model> extends BaseManager<T> {
     return super.getQuerySet().cache();
   }
 
-  Future<List<T>> getCached(String cacheKey, Future<List<T>> Function() fetchFn) async {
+  Future<List<T>> getCached(
+      String cacheKey, Future<List<T>> Function() fetchFn) async {
     final entry = _cache[cacheKey];
     if (entry != null && !entry.isExpired) {
       return entry.value;
@@ -432,7 +467,8 @@ class CacheEntry<T> {
 class ManagerRegistry {
   static final Map<Type, List<BaseManager>> _managers = {};
 
-  static void register<T extends Model>(Type modelType, BaseManager<T> manager) {
+  static void register<T extends Model>(
+      Type modelType, BaseManager<T> manager) {
     _managers.putIfAbsent(modelType, () => []).add(manager);
   }
 
@@ -440,10 +476,14 @@ class ManagerRegistry {
     return _managers[modelType] ?? [];
   }
 
-  static BaseManager<T>? getManager<T extends Model>(Type modelType, String name) {
+  static BaseManager<T>? getManager<T extends Model>(
+      Type modelType, String name) {
     final managers = getManagers(modelType);
     for (final manager in managers) {
-      if (manager.runtimeType.toString().toLowerCase().contains(name.toLowerCase())) {
+      if (manager.runtimeType
+          .toString()
+          .toLowerCase()
+          .contains(name.toLowerCase())) {
         return manager as BaseManager<T>;
       }
     }
@@ -466,7 +506,7 @@ mixin TimestampMixin<T extends Model> on BaseManager<T> {
     final today = DateTime.now();
     final startOfDay = DateTime(today.year, today.month, today.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
-    
+
     return getQuerySet().filter({
       'created_at__gte': startOfDay,
       'created_at__lt': endOfDay,
@@ -517,7 +557,7 @@ class ManagerBuilder<T extends Model> {
   final Model _model;
   final List<QuerySet<T> Function(QuerySet<T>)> _filters = [];
   final List<String> _defaultOrdering = [];
-  
+
   ManagerBuilder(this._model);
 
   ManagerBuilder<T> filter(Map<String, dynamic> filters) {
@@ -544,20 +584,21 @@ class _CustomManager<T extends Model> extends BaseManager<T> {
   final List<QuerySet<T> Function(QuerySet<T>)> _filters;
   final List<String> _defaultOrdering;
 
-  _CustomManager(Model model, this._filters, this._defaultOrdering) : super(model);
+  _CustomManager(Model model, this._filters, this._defaultOrdering)
+      : super(model);
 
   @override
   QuerySet<T> getQuerySet() {
     QuerySet<T> qs = super.getQuerySet();
-    
+
     for (final filter in _filters) {
       qs = filter(qs);
     }
-    
+
     if (_defaultOrdering.isNotEmpty) {
       qs = qs.orderBy(_defaultOrdering);
     }
-    
+
     return qs;
   }
 }

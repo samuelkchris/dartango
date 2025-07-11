@@ -95,7 +95,7 @@ class ModelMeta {
 
 abstract class Model {
   static late Manager<Model> objects;
-  
+
   Map<String, dynamic> _fieldValues = {};
   Map<String, dynamic> _originalValues = {};
   Map<String, Field> _fields = {};
@@ -121,12 +121,12 @@ abstract class Model {
   void _initializeFields() {
     final mirror = reflect(this);
     final classMirror = mirror.type;
-    
+
     for (final declaration in classMirror.declarations.values) {
       if (declaration is VariableMirror) {
         final fieldName = MirrorSystem.getName(declaration.simpleName);
         final field = mirror.getField(declaration.simpleName).reflectee;
-        
+
         if (field is Field) {
           _fields[fieldName] = field;
           if (_fieldValues[fieldName] == null && field.defaultValue != null) {
@@ -145,11 +145,11 @@ abstract class Model {
     _fieldValues.clear();
     _originalValues.clear();
     _changedFields.clear();
-    
+
     for (final entry in data.entries) {
       final fieldName = entry.key;
       final field = _fields[fieldName];
-      
+
       if (field != null) {
         final value = field.fromSqlValue(entry.value);
         _fieldValues[fieldName] = value;
@@ -159,7 +159,7 @@ abstract class Model {
         _originalValues[fieldName] = entry.value;
       }
     }
-    
+
     _isLoaded = true;
     _hasChanged = false;
   }
@@ -173,7 +173,7 @@ abstract class Model {
     if (field != null) {
       final cleanValue = field.clean(value);
       field.validate(cleanValue);
-      
+
       if (_fieldValues[fieldName] != cleanValue) {
         _fieldValues[fieldName] = cleanValue;
         _changedFields.add(fieldName);
@@ -226,14 +226,15 @@ abstract class Model {
       final fieldName = entry.key;
       final field = entry.value;
       final value = _fieldValues[fieldName];
-      
+
       try {
         field.validate(value);
       } catch (e) {
-        throw ValidationException('Field $fieldName: ${e.toString()}', fieldName: fieldName, value: value);
+        throw ValidationException('Field $fieldName: ${e.toString()}',
+            fieldName: fieldName, value: value);
       }
     }
-    
+
     fullClean();
   }
 
@@ -248,17 +249,19 @@ abstract class Model {
       final fieldName = entry.key;
       final field = entry.value;
       final value = _fieldValues[fieldName];
-      
+
       if (value == null && !field.allowNull && field.defaultValue == null) {
-        throw ValidationException('Field $fieldName cannot be null', fieldName: fieldName);
+        throw ValidationException('Field $fieldName cannot be null',
+            fieldName: fieldName);
       }
-      
+
       if (value != null) {
         try {
           final cleanValue = field.clean(value);
           _fieldValues[fieldName] = cleanValue;
         } catch (e) {
-          throw ValidationException('Field $fieldName: ${e.toString()}', fieldName: fieldName, value: value);
+          throw ValidationException('Field $fieldName: ${e.toString()}',
+              fieldName: fieldName, value: value);
         }
       }
     }
@@ -272,7 +275,7 @@ abstract class Model {
     for (final entry in _fields.entries) {
       final fieldName = entry.key;
       final field = entry.value;
-      
+
       if (field.unique) {
         final value = _fieldValues[fieldName];
         if (value != null) {
@@ -280,15 +283,15 @@ abstract class Model {
         }
       }
     }
-    
+
     for (final uniqueSet in meta.uniqueTogether) {
       final fields = uniqueSet.split(',').map((f) => f.trim()).toList();
       final values = <String, dynamic>{};
-      
+
       for (final fieldName in fields) {
         values[fieldName] = _fieldValues[fieldName];
       }
-      
+
       await _validateUniqueTogetherConstraint(fields, values);
     }
   }
@@ -300,52 +303,59 @@ abstract class Model {
           .select(['COUNT(*) as count'])
           .from(tableName)
           .where('$fieldName = ?', [value]);
-      
+
       if (!isNew) {
         builder.where('${primaryKeyField} != ?', [pk]);
       }
-      
-      final result = await connection.query(builder.toSql(), builder.parameters);
+
+      final result =
+          await connection.query(builder.toSql(), builder.parameters);
       if (result.first['count'] > 0) {
-        throw ValidationException('Value for $fieldName must be unique', fieldName: fieldName, value: value);
+        throw ValidationException('Value for $fieldName must be unique',
+            fieldName: fieldName, value: value);
       }
     } finally {
       await DatabaseRouter.releaseConnection(connection, database);
     }
   }
 
-  Future<void> _validateUniqueTogetherConstraint(List<String> fields, Map<String, dynamic> values) async {
+  Future<void> _validateUniqueTogetherConstraint(
+      List<String> fields, Map<String, dynamic> values) async {
     final connection = await DatabaseRouter.getConnection(database);
     try {
-      final builder = QueryBuilder()
-          .select(['COUNT(*) as count'])
-          .from(tableName);
-      
+      final builder =
+          QueryBuilder().select(['COUNT(*) as count']).from(tableName);
+
       for (final field in fields) {
         builder.where('$field = ?', [values[field]]);
       }
-      
+
       if (!isNew) {
         builder.where('${primaryKeyField} != ?', [pk]);
       }
-      
-      final result = await connection.query(builder.toSql(), builder.parameters);
+
+      final result =
+          await connection.query(builder.toSql(), builder.parameters);
       if (result.first['count'] > 0) {
-        throw ValidationException('Values for fields ${fields.join(', ')} must be unique together');
+        throw ValidationException(
+            'Values for fields ${fields.join(', ')} must be unique together');
       }
     } finally {
       await DatabaseRouter.releaseConnection(connection, database);
     }
   }
 
-  Future<void> save({bool forceInsert = false, bool forceUpdate = false, List<String>? updateFields}) async {
+  Future<void> save(
+      {bool forceInsert = false,
+      bool forceUpdate = false,
+      List<String>? updateFields}) async {
     if (forceInsert && forceUpdate) {
       throw ModelException('Cannot force both insert and update');
     }
-    
+
     validate();
     await fullClean();
-    
+
     if (isNew && !forceUpdate) {
       await _insert();
     } else if (!isNew && !forceInsert) {
@@ -355,7 +365,7 @@ abstract class Model {
     } else if (forceUpdate) {
       await _update(updateFields: updateFields);
     }
-    
+
     _hasChanged = false;
     _changedFields.clear();
     _isLoaded = true;
@@ -371,10 +381,11 @@ abstract class Model {
           insertData[entry.key] = entry.value;
         }
       }
-      
+
       final builder = InsertQueryBuilder(tableName).values(insertData);
-      final result = await connection.execute(builder.toSql(), builder.parameters);
-      
+      final result =
+          await connection.execute(builder.toSql(), builder.parameters);
+
       if (result.insertId != null) {
         setField(primaryKeyField, result.insertId);
       }
@@ -388,20 +399,20 @@ abstract class Model {
     try {
       final updateData = <String, dynamic>{};
       final fieldsToUpdate = updateFields ?? _changedFields.toList();
-      
+
       for (final fieldName in fieldsToUpdate) {
         final field = _fields[fieldName];
         if (field != null && !field.primaryKey) {
           updateData[fieldName] = _fieldValues[fieldName];
         }
       }
-      
+
       if (updateData.isEmpty) return;
-      
+
       final builder = UpdateQueryBuilder(tableName)
           .set(updateData)
           .where('${primaryKeyField} = ?', [pk]);
-      
+
       await connection.execute(builder.toSql(), builder.parameters);
     } finally {
       await DatabaseRouter.releaseConnection(connection, database);
@@ -412,14 +423,14 @@ abstract class Model {
     if (isNew) {
       throw ModelException('Cannot delete unsaved model instance');
     }
-    
+
     final connection = await DatabaseRouter.getConnection(database);
     try {
-      final builder = DeleteQueryBuilder(tableName)
-          .where('${primaryKeyField} = ?', [pk]);
-      
+      final builder =
+          DeleteQueryBuilder(tableName).where('${primaryKeyField} = ?', [pk]);
+
       await connection.execute(builder.toSql(), builder.parameters);
-      
+
       _fieldValues.clear();
       _hasChanged = false;
       _changedFields.clear();
@@ -433,20 +444,22 @@ abstract class Model {
     if (isNew) {
       throw ModelException('Cannot refresh unsaved model instance');
     }
-    
+
     final connection = await DatabaseRouter.getConnection(database);
     try {
       final builder = QueryBuilder()
           .select(['*'])
           .from(tableName)
           .where('${primaryKeyField} = ?', [pk]);
-      
-      final result = await connection.query(builder.toSql(), builder.parameters);
-      
+
+      final result =
+          await connection.query(builder.toSql(), builder.parameters);
+
       if (result.isEmpty) {
-        throw DoesNotExistException('Model instance no longer exists in database');
+        throw DoesNotExistException(
+            'Model instance no longer exists in database');
       }
-      
+
       _loadFromMap(result.first);
     } finally {
       await DatabaseRouter.releaseConnection(connection, database);
@@ -464,14 +477,14 @@ abstract class Model {
     if (identical(this, other)) return true;
     if (other is! Model) return false;
     if (other.runtimeType != runtimeType) return false;
-    
+
     final thisPk = pk;
     final otherPk = other.pk;
-    
+
     if (thisPk == null || otherPk == null) {
       return false;
     }
-    
+
     return thisPk == otherPk;
   }
 
@@ -532,31 +545,32 @@ abstract class Model {
     try {
       final relatedTableName = '${relatedField}s';
       final foreignKey = '${tableName.substring(0, tableName.length - 1)}_id';
-      
+
       final builder = QueryBuilder()
           .select(['*'])
           .from(relatedTableName)
           .where('$foreignKey = ?', [pk]);
-      
-      final results = await connection.query(builder.toSql(), builder.parameters);
+
+      final results =
+          await connection.query(builder.toSql(), builder.parameters);
       return results.map((data) => _createGenericModel(data)).toList();
     } finally {
       await DatabaseRouter.releaseConnection(connection, database);
     }
   }
 
-  Future<void> setRelatedObjects(String relatedField, List<Model> objects) async {
+  Future<void> setRelatedObjects(
+      String relatedField, List<Model> objects) async {
     final connection = await DatabaseRouter.getConnection(database);
     try {
       final relatedTableName = '${relatedField}s';
       final foreignKey = '${tableName.substring(0, tableName.length - 1)}_id';
-      
+
       final clearBuilder = UpdateQueryBuilder(relatedTableName)
-          .set({foreignKey: null})
-          .where('$foreignKey = ?', [pk]);
-      
+          .set({foreignKey: null}).where('$foreignKey = ?', [pk]);
+
       await connection.execute(clearBuilder.toSql(), clearBuilder.parameters);
-      
+
       for (final obj in objects) {
         obj.setField(foreignKey, pk);
         await obj.save();
@@ -571,11 +585,12 @@ abstract class Model {
     try {
       final junctionTable = '${tableName}_${relatedField}';
       final thisIdField = '${tableName.substring(0, tableName.length - 1)}_id';
-      final relatedIdField = '${relatedField.substring(0, relatedField.length - 1)}_id';
-      
+      final relatedIdField =
+          '${relatedField.substring(0, relatedField.length - 1)}_id';
+
       final builder = InsertQueryBuilder(junctionTable)
           .values({thisIdField: pk, relatedIdField: object.pk});
-      
+
       await connection.execute(builder.toSql(), builder.parameters);
     } finally {
       await DatabaseRouter.releaseConnection(connection, database);
@@ -587,11 +602,12 @@ abstract class Model {
     try {
       final junctionTable = '${tableName}_${relatedField}';
       final thisIdField = '${tableName.substring(0, tableName.length - 1)}_id';
-      final relatedIdField = '${relatedField.substring(0, relatedField.length - 1)}_id';
-      
+      final relatedIdField =
+          '${relatedField.substring(0, relatedField.length - 1)}_id';
+
       final builder = DeleteQueryBuilder(junctionTable)
           .where('$thisIdField = ? AND $relatedIdField = ?', [pk, object.pk]);
-      
+
       await connection.execute(builder.toSql(), builder.parameters);
     } finally {
       await DatabaseRouter.releaseConnection(connection, database);
@@ -603,16 +619,16 @@ abstract class Model {
     try {
       final junctionTable = '${tableName}_${relatedField}';
       final thisIdField = '${tableName.substring(0, tableName.length - 1)}_id';
-      
-      final builder = DeleteQueryBuilder(junctionTable)
-          .where('$thisIdField = ?', [pk]);
-      
+
+      final builder =
+          DeleteQueryBuilder(junctionTable).where('$thisIdField = ?', [pk]);
+
       await connection.execute(builder.toSql(), builder.parameters);
     } finally {
       await DatabaseRouter.releaseConnection(connection, database);
     }
   }
-  
+
   Model _createGenericModel(Map<String, dynamic> data) {
     return ProxyModel(this);
   }
@@ -682,15 +698,16 @@ abstract class Model {
   // Database operations
   Future<bool> exists() async {
     if (isNew) return false;
-    
+
     final connection = await DatabaseRouter.getConnection(database);
     try {
       final builder = QueryBuilder()
           .select(['COUNT(*) as count'])
           .from(tableName)
           .where('${primaryKeyField} = ?', [pk]);
-      
-      final result = await connection.query(builder.toSql(), builder.parameters);
+
+      final result =
+          await connection.query(builder.toSql(), builder.parameters);
       return result.first['count'] > 0;
     } finally {
       await DatabaseRouter.releaseConnection(connection, database);
@@ -711,69 +728,78 @@ abstract class Model {
   }
 
   // Batch operations
-  static Future<List<Model>> bulkCreate(List<Model> objects, {int batchSize = 1000}) async {
+  static Future<List<Model>> bulkCreate(List<Model> objects,
+      {int batchSize = 1000}) async {
     if (objects.isEmpty) return [];
-    
-    final connection = await DatabaseRouter.getConnection(objects.first.database);
+
+    final connection =
+        await DatabaseRouter.getConnection(objects.first.database);
     try {
       final batches = <List<Model>>[];
       for (int i = 0; i < objects.length; i += batchSize) {
-        final end = (i + batchSize < objects.length) ? i + batchSize : objects.length;
+        final end =
+            (i + batchSize < objects.length) ? i + batchSize : objects.length;
         batches.add(objects.sublist(i, end));
       }
-      
+
       final results = <Model>[];
       for (final batch in batches) {
         final batchData = batch.map((obj) => obj.toMap()).toList();
-        final builder = InsertQueryBuilder(objects.first.tableName).bulkValues(batchData);
-        
+        final builder =
+            InsertQueryBuilder(objects.first.tableName).bulkValues(batchData);
+
         await connection.execute(builder.toSql(), builder.parameters);
         results.addAll(batch);
       }
-      
+
       return results;
     } finally {
-      await DatabaseRouter.releaseConnection(connection, objects.first.database);
+      await DatabaseRouter.releaseConnection(
+          connection, objects.first.database);
     }
   }
 
-  static Future<int> bulkUpdate(List<Model> objects, List<String> fields, {int batchSize = 1000}) async {
+  static Future<int> bulkUpdate(List<Model> objects, List<String> fields,
+      {int batchSize = 1000}) async {
     if (objects.isEmpty) return 0;
-    
+
     int updated = 0;
     final batches = <List<Model>>[];
     for (int i = 0; i < objects.length; i += batchSize) {
-      final end = (i + batchSize < objects.length) ? i + batchSize : objects.length;
+      final end =
+          (i + batchSize < objects.length) ? i + batchSize : objects.length;
       batches.add(objects.sublist(i, end));
     }
-    
+
     for (final batch in batches) {
       for (final obj in batch) {
         await obj.save(updateFields: fields);
         updated++;
       }
     }
-    
+
     return updated;
   }
 
-  static Future<int> bulkDelete(List<Model> objects, {int batchSize = 1000}) async {
+  static Future<int> bulkDelete(List<Model> objects,
+      {int batchSize = 1000}) async {
     if (objects.isEmpty) return 0;
-    
+
     int deleted = 0;
     final batches = <List<Model>>[];
     for (int i = 0; i < objects.length; i += batchSize) {
-      final end = (i + batchSize < objects.length) ? i + batchSize : objects.length;
+      final end =
+          (i + batchSize < objects.length) ? i + batchSize : objects.length;
       batches.add(objects.sublist(i, end));
     }
-    
+
     for (final batch in batches) {
       for (final obj in batch) {
         await obj.delete();
         deleted++;
       }
     }
-    
+
     return deleted;
   }
 }
@@ -786,7 +812,7 @@ abstract class AbstractModel extends Model {
 
 class ProxyModel extends Model {
   final Model _target;
-  
+
   ProxyModel(this._target) {
     _fieldValues = _target._fieldValues;
     _fields = _target._fields;
@@ -794,13 +820,13 @@ class ProxyModel extends Model {
     _hasChanged = _target._hasChanged;
     _changedFields = _target._changedFields;
   }
-  
+
   @override
   ModelMeta get meta => _target.meta.copyWith(proxy: true);
-  
+
   @override
   String get tableName => _target.tableName;
-  
+
   @override
   String? get database => _target.database;
 }
@@ -809,28 +835,28 @@ class ProxyModel extends Model {
 class ModelRegistry {
   static final Map<Type, ModelMeta> _registry = {};
   static final Map<String, Type> _tableToModel = {};
-  
+
   static void register(Type modelType, ModelMeta meta) {
     _registry[modelType] = meta;
     _tableToModel[meta.effectiveTableName] = modelType;
   }
-  
+
   static ModelMeta? getMeta(Type modelType) {
     return _registry[modelType];
   }
-  
+
   static Type? getModelByTable(String tableName) {
     return _tableToModel[tableName];
   }
-  
+
   static List<Type> getAllModels() {
     return _registry.keys.toList();
   }
-  
+
   static Map<Type, ModelMeta> getAllRegistry() {
     return Map.unmodifiable(_registry);
   }
-  
+
   static void clear() {
     _registry.clear();
     _tableToModel.clear();
@@ -844,7 +870,7 @@ class ModelState {
   final Set<String> changedFields;
   final bool isLoaded;
   final bool isNew;
-  
+
   ModelState({
     required this.originalValues,
     required this.currentValues,
@@ -852,26 +878,26 @@ class ModelState {
     required this.isLoaded,
     required this.isNew,
   });
-  
+
   bool isDirty([String? fieldName]) {
     if (fieldName != null) {
       return changedFields.contains(fieldName);
     }
     return changedFields.isNotEmpty;
   }
-  
+
   bool wasFieldChanged(String fieldName) {
     return changedFields.contains(fieldName);
   }
-  
+
   dynamic getOriginalValue(String fieldName) {
     return originalValues[fieldName];
   }
-  
+
   dynamic getCurrentValue(String fieldName) {
     return currentValues[fieldName];
   }
-  
+
   Map<String, dynamic> getDirtyFields() {
     final result = <String, dynamic>{};
     for (final fieldName in changedFields) {
@@ -894,7 +920,7 @@ class ModelOptions {
   final bool abstract;
   final bool proxy;
   final Map<String, dynamic> meta;
-  
+
   const ModelOptions({
     this.tableName,
     this.appLabel,

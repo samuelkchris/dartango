@@ -26,14 +26,20 @@ Examples:
   @override
   ArgParser get argParser {
     final parser = ArgParser();
-    parser.addOption('output', abbr: 'o', defaultsTo: 'build',
+    parser.addOption('output',
+        abbr: 'o',
+        defaultsTo: 'build',
         help: 'Output directory for build files');
-    parser.addOption('mode', abbr: 'm', defaultsTo: 'release',
+    parser.addOption('mode',
+        abbr: 'm',
+        defaultsTo: 'release',
         allowed: ['debug', 'release'],
         help: 'Build mode');
-    parser.addFlag('verbose', abbr: 'v', defaultsTo: false,
-        help: 'Enable verbose output');
-    parser.addFlag('clean', abbr: 'c', defaultsTo: false,
+    parser.addFlag('verbose',
+        abbr: 'v', defaultsTo: false, help: 'Enable verbose output');
+    parser.addFlag('clean',
+        abbr: 'c',
+        defaultsTo: false,
         help: 'Clean build directory before building');
     return parser;
   }
@@ -126,7 +132,7 @@ Examples:
         final relativePath = entity.path.replaceFirst('static/', '');
         final outputPath = '$outputDir/static/$relativePath';
         final outputFile = File(outputPath);
-        
+
         await outputFile.create(recursive: true);
         await entity.copy(outputPath);
       }
@@ -156,7 +162,7 @@ logging:
   bool _isInDartangoProject() {
     final pubspecFile = File('pubspec.yaml');
     if (!pubspecFile.existsSync()) return false;
-    
+
     final content = pubspecFile.readAsStringSync();
     return content.contains('dartango');
   }

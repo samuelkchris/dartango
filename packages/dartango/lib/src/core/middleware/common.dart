@@ -46,7 +46,7 @@ class CommonMiddleware extends BaseMiddleware {
   @override
   FutureOr<HttpResponse?> processRequest(HttpRequest request) {
     final host = request.host;
-    
+
     if (allowedHostsRequired && !_isAllowedHost(host)) {
       return HttpResponse.badRequest('Invalid host header');
     }
@@ -125,7 +125,8 @@ class CommonMiddleware extends BaseMiddleware {
       }
 
       if (allowed.startsWith('.')) {
-        if (hostWithoutPort.endsWith(allowed) || hostWithoutPort == allowed.substring(1)) {
+        if (hostWithoutPort.endsWith(allowed) ||
+            hostWithoutPort == allowed.substring(1)) {
           return true;
         }
       } else if (hostWithoutPort == allowed) {
@@ -227,7 +228,8 @@ class CommonMiddleware extends BaseMiddleware {
     return '"${digest.toString().substring(0, 16)}"';
   }
 
-  HttpResponse _handleConditionalGet(HttpRequest request, HttpResponse response) {
+  HttpResponse _handleConditionalGet(
+      HttpRequest request, HttpResponse response) {
     final etag = response.headers['etag'];
     final lastModified = response.headers['last-modified'];
 
@@ -252,7 +254,7 @@ class CommonMiddleware extends BaseMiddleware {
         try {
           final ifModifiedDate = HttpDate.parse(ifModifiedSince);
           final lastModifiedDate = HttpDate.parse(lastModified);
-          if (lastModifiedDate.isBefore(ifModifiedDate) || 
+          if (lastModifiedDate.isBefore(ifModifiedDate) ||
               lastModifiedDate.isAtSameMomentAs(ifModifiedDate)) {
             return _notModifiedResponse(response);
           }
@@ -426,13 +428,14 @@ class BrokenLinkEmailsMiddleware extends BaseMiddleware {
     this.reportTo,
     this.reportOnly404s = true,
   })  : ignorable404Urls = ignorable404Urls ?? [],
-        ignorable404UserAgents = ignorable404UserAgents ?? [
-          'bot',
-          'spider',
-          'crawler',
-          'slurp',
-          'twiceler',
-        ];
+        ignorable404UserAgents = ignorable404UserAgents ??
+            [
+              'bot',
+              'spider',
+              'crawler',
+              'slurp',
+              'twiceler',
+            ];
 
   @override
   FutureOr<HttpResponse> processResponse(
@@ -488,6 +491,7 @@ class BrokenLinkEmailsMiddleware extends BaseMiddleware {
     final userAgent = request.headers['user-agent'] ?? 'unknown';
     final statusCode = response.statusCode;
 
-    print('Broken link: $statusCode for $path (referred by: $referer, user-agent: $userAgent)');
+    print(
+        'Broken link: $statusCode for $path (referred by: $referer, user-agent: $userAgent)');
   }
 }

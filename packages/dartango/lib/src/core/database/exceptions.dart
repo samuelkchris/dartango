@@ -18,7 +18,8 @@ class QueryException extends DatabaseException {
   final String? query;
   final List<dynamic>? parameters;
 
-  QueryException(String message, {this.query, this.parameters, String? code, Exception? innerException})
+  QueryException(String message,
+      {this.query, this.parameters, String? code, Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override
@@ -35,7 +36,8 @@ class QueryException extends DatabaseException {
 }
 
 class TransactionException extends DatabaseException {
-  TransactionException(String message, {String? code, Exception? innerException})
+  TransactionException(String message,
+      {String? code, Exception? innerException})
       : super(message, code: code, innerException: innerException);
 }
 
@@ -43,7 +45,11 @@ class MigrationException extends DatabaseException {
   final String? migrationName;
   final String? operation;
 
-  MigrationException(String message, {this.migrationName, this.operation, String? code, Exception? innerException})
+  MigrationException(String message,
+      {this.migrationName,
+      this.operation,
+      String? code,
+      Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override
@@ -63,7 +69,8 @@ class ValidationException extends DatabaseException {
   final String? fieldName;
   final dynamic value;
 
-  ValidationException(String message, {this.fieldName, this.value, String? code, Exception? innerException})
+  ValidationException(String message,
+      {this.fieldName, this.value, String? code, Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override
@@ -83,7 +90,11 @@ class IntegrityException extends DatabaseException {
   final String? constraintName;
   final String? tableName;
 
-  IntegrityException(String message, {this.constraintName, this.tableName, String? code, Exception? innerException})
+  IntegrityException(String message,
+      {this.constraintName,
+      this.tableName,
+      String? code,
+      Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override
@@ -103,7 +114,11 @@ class DoesNotExistException extends DatabaseException {
   final String? modelName;
   final Map<String, dynamic>? lookupArgs;
 
-  DoesNotExistException(String message, {this.modelName, this.lookupArgs, String? code, Exception? innerException})
+  DoesNotExistException(String message,
+      {this.modelName,
+      this.lookupArgs,
+      String? code,
+      Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override
@@ -123,7 +138,11 @@ class MultipleObjectsReturnedException extends DatabaseException {
   final String? modelName;
   final Map<String, dynamic>? lookupArgs;
 
-  MultipleObjectsReturnedException(String message, {this.modelName, this.lookupArgs, String? code, Exception? innerException})
+  MultipleObjectsReturnedException(String message,
+      {this.modelName,
+      this.lookupArgs,
+      String? code,
+      Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override
@@ -143,7 +162,8 @@ class FieldException extends DatabaseException {
   final String? fieldName;
   final String? modelName;
 
-  FieldException(String message, {this.fieldName, this.modelName, String? code, Exception? innerException})
+  FieldException(String message,
+      {this.fieldName, this.modelName, String? code, Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override
@@ -163,7 +183,8 @@ class ModelException extends DatabaseException {
   final String? modelName;
   final String? operation;
 
-  ModelException(String message, {this.modelName, this.operation, String? code, Exception? innerException})
+  ModelException(String message,
+      {this.modelName, this.operation, String? code, Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override
@@ -182,7 +203,8 @@ class ModelException extends DatabaseException {
 class QuerySetException extends DatabaseException {
   final String? operation;
 
-  QuerySetException(String message, {this.operation, String? code, Exception? innerException})
+  QuerySetException(String message,
+      {this.operation, String? code, Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override
@@ -199,7 +221,8 @@ class SchemaException extends DatabaseException {
   final String? tableName;
   final String? operation;
 
-  SchemaException(String message, {this.tableName, this.operation, String? code, Exception? innerException})
+  SchemaException(String message,
+      {this.tableName, this.operation, String? code, Exception? innerException})
       : super(message, code: code, innerException: innerException);
 
   @override

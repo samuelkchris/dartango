@@ -12,7 +12,8 @@ enum SessionSameSite { strict, lax, none }
 
 abstract class SessionStore {
   FutureOr<Map<String, dynamic>?> load(String sessionKey);
-  FutureOr<void> save(String sessionKey, Map<String, dynamic> data, Duration expiry);
+  FutureOr<void> save(
+      String sessionKey, Map<String, dynamic> data, Duration expiry);
   FutureOr<void> delete(String sessionKey);
   FutureOr<bool> exists(String sessionKey);
   FutureOr<String> createSessionKey();
@@ -115,10 +116,10 @@ class Session {
   Future<void> regenerateKey() async {
     final oldKey = sessionKey;
     final newKey = await _store.createSessionKey();
-    
+
     await _store.save(newKey, _data, _getSessionExpiry());
     await _store.delete(oldKey);
-    
+
     sessionKey = newKey;
     _modified = true;
   }
@@ -157,11 +158,10 @@ class SessionMiddleware extends BaseMiddleware {
         cookiePath = cookiePath ?? '/',
         saveEveryRequest = saveEveryRequest ?? false;
 
-
   @override
   FutureOr<HttpResponse?> processRequest(HttpRequest request) async {
     final sessionKey = request.cookies[cookieName]?.value;
-    
+
     if (sessionKey != null) {
       final sessionData = await sessionStore.load(sessionKey);
       if (sessionData != null) {
@@ -173,13 +173,13 @@ class SessionMiddleware extends BaseMiddleware {
         return null;
       }
     }
-    
+
     final newSessionKey = await sessionStore.createSessionKey();
     request.middlewareState['session'] = Session(
       sessionKey: newSessionKey,
       store: sessionStore,
     );
-    
+
     return null;
   }
 
@@ -193,11 +193,12 @@ class SessionMiddleware extends BaseMiddleware {
       return response;
     }
 
-    final shouldSave = session.modified || (saveEveryRequest && session.accessed);
-    
+    final shouldSave =
+        session.modified || (saveEveryRequest && session.accessed);
+
     if (shouldSave) {
       await session.save();
-      
+
       if (session.isEmpty) {
         response = response.deleteCookie(
           cookieName,
@@ -246,7 +247,8 @@ class InMemorySessionStore extends SessionStore {
   }
 
   @override
-  FutureOr<void> save(String sessionKey, Map<String, dynamic> data, Duration expiry) {
+  FutureOr<void> save(
+      String sessionKey, Map<String, dynamic> data, Duration expiry) {
     _sessions[sessionKey] = Map.from(data);
     _expiries[sessionKey] = DateTime.now().add(expiry);
   }
@@ -280,13 +282,13 @@ class InMemorySessionStore extends SessionStore {
   void _cleanupExpired() {
     final now = DateTime.now();
     final expiredKeys = <String>[];
-    
+
     for (final entry in _expiries.entries) {
       if (entry.value.isBefore(now)) {
         expiredKeys.add(entry.key);
       }
     }
-    
+
     for (final key in expiredKeys) {
       _sessions.remove(key);
       _expiries.remove(key);
@@ -317,7 +319,8 @@ class SignedCookieSessionStore extends SessionStore {
   }
 
   @override
-  FutureOr<void> save(String sessionKey, Map<String, dynamic> data, Duration expiry) {
+  FutureOr<void> save(
+      String sessionKey, Map<String, dynamic> data, Duration expiry) {
     // In signed cookie sessions, data is stored in the cookie itself
     // This is handled by the session middleware
   }
@@ -350,17 +353,17 @@ class SignedCookieSessionStore extends SessionStore {
     if (parts.length != 2) {
       return null;
     }
-    
+
     final value = parts[0];
     final signature = parts[1];
-    
+
     final key = _deriveKey();
     final expectedSignature = _hmac(key, value);
-    
+
     if (signature == expectedSignature) {
       return value;
     }
-    
+
     return null;
   }
 
@@ -388,7 +391,8 @@ class MessageMiddleware extends BaseMiddleware {
   FutureOr<HttpResponse?> processRequest(HttpRequest request) {
     final session = request.middlewareState['session'] as Session?;
     if (session != null) {
-      final messages = session.getFlash(messageKey) as List<Map<String, dynamic>>? ?? [];
+      final messages =
+          session.getFlash(messageKey) as List<Map<String, dynamic>>? ?? [];
       request.middlewareState['messages'] = Messages(messages);
     } else {
       request.middlewareState['messages'] = Messages([]);
@@ -403,14 +407,14 @@ class MessageMiddleware extends BaseMiddleware {
   ) {
     final messages = request.middlewareState['messages'] as Messages?;
     final session = request.middlewareState['session'] as Session?;
-    
+
     if (messages != null && session != null && messages.hasUnconsumed) {
       final unconsumed = messages.unconsumed;
       if (unconsumed.isNotEmpty) {
         session.flash(messageKey, unconsumed);
       }
     }
-    
+
     return response;
   }
 }
@@ -421,7 +425,8 @@ class Messages {
 
   Messages(this._messages);
 
-  void add(String message, {String level = 'info', Map<String, dynamic>? extra}) {
+  void add(String message,
+      {String level = 'info', Map<String, dynamic>? extra}) {
     _messages.add({
       'message': message,
       'level': level,

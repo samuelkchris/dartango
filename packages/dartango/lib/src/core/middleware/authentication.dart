@@ -12,17 +12,17 @@ import 'session.dart';
 class UserStore {
   static final UserStore _instance = UserStore._internal();
   static UserStore get instance => _instance;
-  
+
   UserStore._internal();
-  
+
   final Map<dynamic, DatabaseUser> _userCache = {};
   final Map<String, DatabaseUser> _usernameCache = {};
-  
+
   Future<DatabaseUser?> getUserById(dynamic id) async {
     if (_userCache.containsKey(id)) {
       return _userCache[id];
     }
-    
+
     final userData = await _fetchUserFromDatabase('id', id);
     if (userData != null) {
       final user = DatabaseUser.fromMap(userData);
@@ -30,15 +30,15 @@ class UserStore {
       _usernameCache[user.username] = user;
       return user;
     }
-    
+
     return null;
   }
-  
+
   Future<DatabaseUser?> getUserByUsername(String username) async {
     if (_usernameCache.containsKey(username)) {
       return _usernameCache[username];
     }
-    
+
     final userData = await _fetchUserFromDatabase('username', username);
     if (userData != null) {
       final user = DatabaseUser.fromMap(userData);
@@ -46,10 +46,10 @@ class UserStore {
       _usernameCache[username] = user;
       return user;
     }
-    
+
     return null;
   }
-  
+
   Future<DatabaseUser> createUser({
     required String username,
     required String email,
@@ -73,15 +73,16 @@ class UserStore {
       permissions: {},
       groups: [],
     );
-    
+
     await _saveUserToDatabase(user);
     _userCache[id] = user;
     _usernameCache[username] = user;
-    
+
     return user;
   }
-  
-  Future<Map<String, dynamic>?> _fetchUserFromDatabase(String field, dynamic value) async {
+
+  Future<Map<String, dynamic>?> _fetchUserFromDatabase(
+      String field, dynamic value) async {
     await Future.delayed(Duration(milliseconds: 1));
     return {
       'id': 1,
@@ -97,7 +98,7 @@ class UserStore {
       'password': 'pbkdf2_sha256\$260000\$abcdefghijklmnop\$hash_here',
     };
   }
-  
+
   Future<void> _saveUserToDatabase(DatabaseUser user) async {
     await Future.delayed(Duration(milliseconds: 1));
   }
@@ -106,40 +107,40 @@ class UserStore {
 class DatabaseUser implements User {
   @override
   final dynamic id;
-  
+
   @override
   final String username;
-  
+
   @override
   final String email;
-  
+
   @override
   final String firstName;
-  
+
   @override
   final String lastName;
-  
+
   @override
   final bool isActive;
-  
+
   @override
   final bool isStaff;
-  
+
   @override
   final bool isSuperuser;
-  
+
   @override
   final DateTime dateJoined;
-  
+
   @override
   final DateTime? lastLogin;
-  
+
   @override
   final Map<String, dynamic> permissions;
-  
+
   @override
   final List<String> groups;
-  
+
   const DatabaseUser({
     required this.id,
     required this.username,
@@ -154,39 +155,39 @@ class DatabaseUser implements User {
     required this.permissions,
     required this.groups,
   });
-  
+
   @override
   bool get isAuthenticated => id != null;
-  
+
   @override
   bool get isAnonymous => !isAuthenticated;
-  
+
   @override
   String get fullName => '$firstName $lastName'.trim();
-  
+
   @override
   String get shortName => firstName.isNotEmpty ? firstName : username;
-  
+
   @override
   Future<bool> hasPermission(String permission, {dynamic obj}) async {
     if (isSuperuser) {
       return true;
     }
-    
+
     if (permissions.containsKey(permission)) {
       return permissions[permission] == true;
     }
-    
+
     for (final group in groups) {
       final groupPermissions = await _getGroupPermissions(group);
       if (groupPermissions.containsKey(permission)) {
         return groupPermissions[permission] == true;
       }
     }
-    
+
     return false;
   }
-  
+
   @override
   Future<bool> hasPermissions(List<String> permissions, {dynamic obj}) async {
     for (final permission in permissions) {
@@ -196,22 +197,24 @@ class DatabaseUser implements User {
     }
     return true;
   }
-  
+
   @override
   Future<bool> hasModulePermission(String appLabel) async {
     if (isSuperuser) {
       return true;
     }
-    
-    final modulePermissions = permissions.keys.where((perm) => perm.startsWith('$appLabel.'));
+
+    final modulePermissions =
+        permissions.keys.where((perm) => perm.startsWith('$appLabel.'));
     return modulePermissions.isNotEmpty;
   }
-  
+
   @override
   Future<void> updateLastLogin() async {
-    await UserStore.instance._saveUserToDatabase(copyWith(lastLogin: DateTime.now()));
+    await UserStore.instance
+        ._saveUserToDatabase(copyWith(lastLogin: DateTime.now()));
   }
-  
+
   @override
   Map<String, dynamic> toJson() {
     return {
@@ -229,7 +232,7 @@ class DatabaseUser implements User {
       'groups': groups,
     };
   }
-  
+
   static DatabaseUser fromMap(Map<String, dynamic> map) {
     return DatabaseUser(
       id: map['id'],
@@ -240,21 +243,22 @@ class DatabaseUser implements User {
       isActive: map['is_active'] ?? false,
       isStaff: map['is_staff'] ?? false,
       isSuperuser: map['is_superuser'] ?? false,
-      dateJoined: map['date_joined'] is DateTime 
-          ? map['date_joined'] 
-          : DateTime.parse(map['date_joined'] ?? DateTime.now().toIso8601String()),
-      lastLogin: map['last_login'] != null 
-          ? (map['last_login'] is DateTime 
-              ? map['last_login'] 
+      dateJoined: map['date_joined'] is DateTime
+          ? map['date_joined']
+          : DateTime.parse(
+              map['date_joined'] ?? DateTime.now().toIso8601String()),
+      lastLogin: map['last_login'] != null
+          ? (map['last_login'] is DateTime
+              ? map['last_login']
               : DateTime.parse(map['last_login']))
           : null,
       permissions: Map<String, dynamic>.from(map['permissions'] ?? {}),
       groups: List<String>.from(map['groups'] ?? []),
     );
   }
-  
+
   static DatabaseUser fromRow(Map<String, dynamic> row) => fromMap(row);
-  
+
   DatabaseUser copyWith({
     dynamic id,
     String? username,
@@ -284,7 +288,7 @@ class DatabaseUser implements User {
       groups: groups ?? this.groups,
     );
   }
-  
+
   Future<Map<String, dynamic>> _getGroupPermissions(String group) async {
     return {};
   }
@@ -293,11 +297,11 @@ class DatabaseUser implements User {
 class TokenStore {
   static final TokenStore _instance = TokenStore._internal();
   static TokenStore get instance => _instance;
-  
+
   TokenStore._internal();
-  
+
   final Map<String, AuthToken> _tokens = {};
-  
+
   Future<String> createToken(dynamic userId) async {
     final token = _generateToken();
     final authToken = AuthToken(
@@ -306,30 +310,30 @@ class TokenStore {
       created: DateTime.now(),
       lastUsed: DateTime.now(),
     );
-    
+
     _tokens[token] = authToken;
     return token;
   }
-  
+
   Future<dynamic> validateToken(String token) async {
     final authToken = _tokens[token];
     if (authToken == null) {
       return null;
     }
-    
+
     if (authToken.isExpired) {
       _tokens.remove(token);
       return null;
     }
-    
+
     authToken.updateLastUsed();
     return authToken.userId;
   }
-  
+
   Future<void> revokeToken(String token) async {
     _tokens.remove(token);
   }
-  
+
   String _generateToken() {
     final random = Random.secure();
     final bytes = List<int>.generate(32, (_) => random.nextInt(256));
@@ -342,26 +346,27 @@ class AuthToken {
   final dynamic userId;
   final DateTime created;
   DateTime lastUsed;
-  
+
   AuthToken({
     required this.token,
     required this.userId,
     required this.created,
     required this.lastUsed,
   });
-  
+
   bool get isExpired {
     final now = DateTime.now();
     return now.difference(created).inDays > 30;
   }
-  
+
   void updateLastUsed() {
     lastUsed = DateTime.now();
   }
 }
 
 abstract class AuthenticationBackend {
-  FutureOr<User?> authenticate(HttpRequest request, String? username, String? password);
+  FutureOr<User?> authenticate(
+      HttpRequest request, String? username, String? password);
   FutureOr<User?> getUser(dynamic userId);
   FutureOr<bool> hasPermission(User user, String permission, {dynamic obj});
   FutureOr<bool> hasModulePermission(User user, String appLabel);
@@ -381,88 +386,91 @@ abstract class User {
   DateTime? get lastLogin;
   Map<String, dynamic> get permissions;
   List<String> get groups;
-  
+
   bool get isAuthenticated => id != null;
   bool get isAnonymous => !isAuthenticated;
-  
+
   String get fullName => '$firstName $lastName'.trim();
   String get shortName => firstName.isNotEmpty ? firstName : username;
-  
+
   FutureOr<bool> hasPermission(String permission, {dynamic obj});
   FutureOr<bool> hasPermissions(List<String> permissions, {dynamic obj});
   FutureOr<bool> hasModulePermission(String appLabel);
   FutureOr<void> updateLastLogin();
-  
+
   Map<String, dynamic> toJson();
   static User fromJson(Map<String, dynamic> json) {
-    throw UnimplementedError('fromJson must be implemented by concrete User class');
+    throw UnimplementedError(
+        'fromJson must be implemented by concrete User class');
   }
 }
 
 class AnonymousUser implements User {
   @override
   dynamic get id => null;
-  
+
   @override
   String get username => '';
-  
+
   @override
   String get email => '';
-  
+
   @override
   String get firstName => '';
-  
+
   @override
   String get lastName => '';
-  
+
   @override
   bool get isActive => false;
-  
+
   @override
   bool get isStaff => false;
-  
+
   @override
   bool get isSuperuser => false;
-  
+
   @override
   DateTime get dateJoined => DateTime.now();
-  
+
   @override
   DateTime? get lastLogin => null;
-  
+
   @override
   Map<String, dynamic> get permissions => {};
-  
+
   @override
   List<String> get groups => [];
-  
+
   @override
   bool get isAuthenticated => false;
-  
+
   @override
   bool get isAnonymous => true;
-  
+
   @override
   String get fullName => '';
-  
+
   @override
   String get shortName => '';
-  
+
   @override
   FutureOr<bool> hasPermission(String permission, {dynamic obj}) => false;
-  
+
   @override
-  FutureOr<bool> hasPermissions(List<String> permissions, {dynamic obj}) => false;
-  
+  FutureOr<bool> hasPermissions(List<String> permissions, {dynamic obj}) =>
+      false;
+
   @override
   FutureOr<bool> hasModulePermission(String appLabel) => false;
-  
+
   @override
   FutureOr<void> updateLastLogin() {}
-  
+
   @override
-  Map<String, dynamic> toJson() => {'id': null, 'username': '', 'is_anonymous': true};
-  
+  Map<String, dynamic> toJson() =>
+      {'id': null, 'username': '', 'is_anonymous': true};
+
   static User fromJson(Map<String, dynamic> json) => AnonymousUser();
 }
 
@@ -506,8 +514,8 @@ class AuthenticationMiddleware extends BaseMiddleware {
     final user = await _getUser(request);
     request.middlewareState['user'] = user;
 
-    if (requiresAuthentication && 
-        user.isAnonymous && 
+    if (requiresAuthentication &&
+        user.isAnonymous &&
         !_isExemptPath(request.uri.path)) {
       return _redirectToLogin(request);
     }
@@ -553,7 +561,8 @@ class AuthenticationMiddleware extends BaseMiddleware {
     if (sessionTimeout != null) {
       final lastActivity = session['_auth_last_activity'] as int?;
       if (lastActivity != null) {
-        final lastActivityTime = DateTime.fromMillisecondsSinceEpoch(lastActivity);
+        final lastActivityTime =
+            DateTime.fromMillisecondsSinceEpoch(lastActivity);
         if (DateTime.now().difference(lastActivityTime) > sessionTimeout!) {
           _flushSession(session);
           return AnonymousUser();
@@ -607,29 +616,31 @@ class AuthenticationMiddleware extends BaseMiddleware {
 
 class ModelBackend extends AuthenticationBackend {
   @override
-  Future<User?> authenticate(HttpRequest request, String? username, String? password) async {
+  Future<User?> authenticate(
+      HttpRequest request, String? username, String? password) async {
     if (username == null || password == null) {
       return null;
     }
-    
+
     final userStore = UserStore.instance;
     final user = await userStore.getUserByUsername(username);
-    
+
     if (user == null || !user.isActive) {
       return null;
     }
-    
-    final userData = await userStore._fetchUserFromDatabase('username', username);
+
+    final userData =
+        await userStore._fetchUserFromDatabase('username', username);
     if (userData == null) {
       return null;
     }
-    
+
     final storedPassword = userData['password'] as String;
-    
+
     if (!_verifyPassword(password, storedPassword)) {
       return null;
     }
-    
+
     return user;
   }
 
@@ -638,11 +649,11 @@ class ModelBackend extends AuthenticationBackend {
     if (userId == null) {
       return null;
     }
-    
+
     final userStore = UserStore.instance;
     return await userStore.getUserById(userId);
   }
-  
+
   bool _verifyPassword(String password, String hashedPassword) {
     if (hashedPassword.startsWith('pbkdf2_sha256\$')) {
       return _verifyPbkdf2(password, hashedPassword);
@@ -653,69 +664,69 @@ class ModelBackend extends AuthenticationBackend {
     }
     return password == hashedPassword;
   }
-  
+
   bool _verifyPbkdf2(String password, String hashedPassword) {
     final parts = hashedPassword.split('\$');
     if (parts.length != 4) return false;
-    
+
     final iterations = int.parse(parts[1]);
     final salt = base64.decode(parts[2]);
     final expectedHash = base64.decode(parts[3]);
-    
+
     final passwordBytes = utf8.encode(password);
     final hmacSha256 = Hmac(sha256, passwordBytes);
-    
+
     var result = Uint8List.fromList(salt);
     for (var i = 0; i < iterations; i++) {
       result = Uint8List.fromList(hmacSha256.convert(result).bytes);
     }
-    
+
     return _constantTimeCompare(result, expectedHash);
   }
-  
+
   bool _verifyBcrypt(String password, String hashedPassword) {
     final parts = hashedPassword.split('\$');
     if (parts.length != 4) return false;
-    
+
     final cost = int.parse(parts[2]);
     final saltAndHash = parts[3];
-    
+
     final salt = saltAndHash.substring(0, 22);
     final hash = saltAndHash.substring(22);
-    
+
     final passwordBytes = utf8.encode(password);
     final saltBytes = base64.decode(salt);
-    
+
     var result = Uint8List.fromList(passwordBytes);
     for (var i = 0; i < (1 << cost); i++) {
       final hmac = Hmac(sha256, saltBytes);
       result = Uint8List.fromList(hmac.convert(result).bytes);
     }
-    
+
     return base64.encode(result) == hash;
   }
-  
+
   bool _verifyArgon2(String password, String hashedPassword) {
     final parts = hashedPassword.split('\$');
     if (parts.length != 6) return false;
-    
+
     final iterations = int.parse(parts[4].split('=')[1]);
-    
+
     final passwordBytes = utf8.encode(password);
     final salt = base64.decode(parts[4]);
-    
+
     var result = Uint8List.fromList(passwordBytes);
     for (var i = 0; i < iterations; i++) {
       final hmac = Hmac(sha256, salt);
       result = Uint8List.fromList(hmac.convert(result).bytes);
     }
-    
+
     return base64.encode(result) == parts[5];
   }
-  
+
   bool _constantTimeCompare(List<int> a, List<int> b) {
     if (a.length != b.length) return false;
-    
+
     var result = 0;
     for (var i = 0; i < a.length; i++) {
       result |= a[i] ^ b[i];
@@ -728,7 +739,7 @@ class ModelBackend extends AuthenticationBackend {
     if (user.isSuperuser) {
       return true;
     }
-    
+
     return user.permissions.containsKey(permission);
   }
 
@@ -737,7 +748,7 @@ class ModelBackend extends AuthenticationBackend {
     if (user.isSuperuser) {
       return true;
     }
-    
+
     return user.permissions.keys.any((perm) => perm.startsWith('$appLabel.'));
   }
 
@@ -761,25 +772,27 @@ class RemoteUserBackend extends AuthenticationBackend {
         cleanUsername = cleanUsername ?? true;
 
   @override
-  Future<User?> authenticate(HttpRequest request, String? username, String? password) async {
+  Future<User?> authenticate(
+      HttpRequest request, String? username, String? password) async {
     final remoteUser = request.headers[headerName.toLowerCase()];
     if (remoteUser == null || remoteUser.isEmpty) {
       return null;
     }
 
-    final cleanedUsername = cleanUsername ? _cleanUsername(remoteUser) : remoteUser;
-    
+    final cleanedUsername =
+        cleanUsername ? _cleanUsername(remoteUser) : remoteUser;
+
     final userStore = UserStore.instance;
     final existingUser = await userStore.getUserByUsername(cleanedUsername);
-    
+
     if (existingUser != null) {
       return existingUser;
     }
-    
+
     if (!createUnknownUser) {
       return null;
     }
-    
+
     return await userStore.createUser(
       username: cleanedUsername,
       email: '$cleanedUsername@remote.user',
@@ -832,7 +845,8 @@ class TokenAuthenticationBackend extends AuthenticationBackend {
         requiresActiveUser = requiresActiveUser ?? true;
 
   @override
-  Future<User?> authenticate(HttpRequest request, String? username, String? password) async {
+  Future<User?> authenticate(
+      HttpRequest request, String? username, String? password) async {
     final authHeader = request.headers[tokenHeaderName.toLowerCase()];
     if (authHeader == null || !authHeader.startsWith(tokenPrefix)) {
       return null;
@@ -849,7 +863,8 @@ class TokenAuthenticationBackend extends AuthenticationBackend {
   }
 
   @override
-  FutureOr<bool> hasPermission(User user, String permission, {dynamic obj}) async {
+  FutureOr<bool> hasPermission(User user, String permission,
+      {dynamic obj}) async {
     return await user.hasPermission(permission, obj: obj);
   }
 
@@ -866,22 +881,22 @@ class TokenAuthenticationBackend extends AuthenticationBackend {
   Future<User?> _getUserFromToken(String token) async {
     final tokenStore = TokenStore.instance;
     final userId = await tokenStore.validateToken(token);
-    
+
     if (userId == null) {
       return null;
     }
-    
+
     final userStore = UserStore.instance;
     final user = await userStore.getUserById(userId);
-    
+
     if (user == null || !user.isActive) {
       return null;
     }
-    
+
     if (requiresActiveUser && !user.isActive) {
       return null;
     }
-    
+
     return user;
   }
 }
@@ -897,7 +912,8 @@ class SessionAuthenticationBackend extends AuthenticationBackend {
         enforceCSRF = enforceCSRF ?? true;
 
   @override
-  Future<User?> authenticate(HttpRequest request, String? username, String? password) async {
+  Future<User?> authenticate(
+      HttpRequest request, String? username, String? password) async {
     final session = request.middlewareState['session'] as Session?;
     if (session == null) {
       return null;
@@ -945,12 +961,14 @@ class AuthenticationError implements Exception {
 
 class AuthenticationRequired extends AuthenticationError {
   AuthenticationRequired({String? message})
-      : super(message ?? 'Authentication credentials were not provided.', code: 'not_authenticated');
+      : super(message ?? 'Authentication credentials were not provided.',
+            code: 'not_authenticated');
 }
 
 class InvalidCredentials extends AuthenticationError {
   InvalidCredentials({String? message})
-      : super(message ?? 'Invalid authentication credentials.', code: 'invalid_credentials');
+      : super(message ?? 'Invalid authentication credentials.',
+            code: 'invalid_credentials');
 }
 
 class UserInactive extends AuthenticationError {
@@ -960,12 +978,14 @@ class UserInactive extends AuthenticationError {
 
 class TokenExpired extends AuthenticationError {
   TokenExpired({String? message})
-      : super(message ?? 'Authentication token has expired.', code: 'token_expired');
+      : super(message ?? 'Authentication token has expired.',
+            code: 'token_expired');
 }
 
-Future<User?> authenticate(HttpRequest request, String? username, String? password) async {
+Future<User?> authenticate(
+    HttpRequest request, String? username, String? password) async {
   final middleware = AuthenticationMiddleware();
-  
+
   for (final backend in middleware.backends) {
     try {
       final user = await backend.authenticate(request, username, password);
@@ -976,7 +996,7 @@ Future<User?> authenticate(HttpRequest request, String? username, String? passwo
       continue;
     }
   }
-  
+
   return null;
 }
 
@@ -987,19 +1007,19 @@ Future<void> login(HttpRequest request, User user) async {
   }
 
   final middleware = AuthenticationMiddleware();
-  
+
   if (middleware.rotateSessionOnLogin) {
     await session.regenerateKey();
   }
 
   session[middleware.userSessionKey] = user.id;
   session[middleware.backendSessionKey] = user.runtimeType.toString();
-  
+
   final userHash = _getUserHash(user);
   session[middleware.hashSessionKey] = userHash;
-  
+
   session['_auth_last_activity'] = DateTime.now().millisecondsSinceEpoch;
-  
+
   await user.updateLastLogin();
 }
 
@@ -1010,14 +1030,14 @@ Future<void> logout(HttpRequest request) async {
   }
 
   final middleware = AuthenticationMiddleware();
-  
+
   session.remove(middleware.userSessionKey);
   session.remove(middleware.backendSessionKey);
   session.remove(middleware.hashSessionKey);
   session.remove('_auth_last_activity');
-  
+
   await session.regenerateKey();
-  
+
   request.middlewareState['user'] = AnonymousUser();
 }
 
@@ -1066,11 +1086,14 @@ class StaffRequired extends PermissionDenied {
 
 class SuperuserRequired extends PermissionDenied {
   SuperuserRequired({String? message})
-      : super(message ?? 'Superuser privileges required to access this resource.');
+      : super(message ??
+            'Superuser privileges required to access this resource.');
 }
 
 class PermissionRequiredError extends PermissionDenied {
   PermissionRequiredError(String permission, {String? message})
-      : super(message ?? 'Permission $permission required to access this resource.',
+      : super(
+            message ??
+                'Permission $permission required to access this resource.',
             permission: permission);
 }

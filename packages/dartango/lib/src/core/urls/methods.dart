@@ -8,7 +8,7 @@ import 'converters.dart';
 class MethodBasedView {
   final Map<String, ViewFunction> _methods = {};
   final List<String> _allowedMethods = [];
-  
+
   MethodBasedView({
     ViewFunction? get,
     ViewFunction? post,
@@ -51,12 +51,12 @@ class MethodBasedView {
       _methods['TRACE'] = trace;
       _allowedMethods.add('TRACE');
     }
-    
+
     if (_allowedMethods.isEmpty) {
       throw ArgumentError('At least one HTTP method must be provided');
     }
   }
-  
+
   void addMethod(String method, ViewFunction view) {
     final upperMethod = method.toUpperCase();
     _methods[upperMethod] = view;
@@ -64,25 +64,26 @@ class MethodBasedView {
       _allowedMethods.add(upperMethod);
     }
   }
-  
+
   void removeMethod(String method) {
     final upperMethod = method.toUpperCase();
     _methods.remove(upperMethod);
     _allowedMethods.remove(upperMethod);
   }
-  
+
   List<String> get allowedMethods => List.unmodifiable(_allowedMethods);
-  
-  FutureOr<HttpResponse> dispatch(HttpRequest request, Map<String, String> kwargs) {
+
+  FutureOr<HttpResponse> dispatch(
+      HttpRequest request, Map<String, String> kwargs) {
     final method = request.method.toUpperCase();
-    
+
     if (!_allowedMethods.contains(method)) {
       throw HttpMethodNotAllowed(
         'Method $method not allowed',
         allowedMethods: _allowedMethods,
       );
     }
-    
+
     final view = _methods[method];
     if (view == null) {
       throw HttpMethodNotAllowed(
@@ -90,7 +91,7 @@ class MethodBasedView {
         allowedMethods: _allowedMethods,
       );
     }
-    
+
     return view(request, kwargs);
   }
 }
@@ -111,10 +112,10 @@ class MethodRoute extends URLPattern {
     required this.pattern,
     required this.view,
     this.name,
-  }) : allowedMethods = view.allowedMethods,
-       _regex = Route.compilePattern(pattern).$1,
-       _groupNames = Route.compilePattern(pattern).$2,
-       _converters = Route.extractConverters(pattern);
+  })  : allowedMethods = view.allowedMethods,
+        _regex = Route.compilePattern(pattern).$1,
+        _groupNames = Route.compilePattern(pattern).$2,
+        _converters = Route.extractConverters(pattern);
 
   @override
   ResolverMatch? resolve(String path) {
@@ -154,7 +155,10 @@ class MethodRoute extends URLPattern {
   }
 
   @override
-  String? reverse(String viewName, {Map<String, String>? kwargs, List<String>? args, List<String>? namespaces}) {
+  String? reverse(String viewName,
+      {Map<String, String>? kwargs,
+      List<String>? args,
+      List<String>? namespaces}) {
     if (name != viewName) return null;
 
     String url = pattern;
@@ -168,7 +172,8 @@ class MethodRoute extends URLPattern {
       if (converter != null) {
         try {
           final convertedValue = converter.convert(value);
-          url = url.replaceAll('<${converter.name}:$groupName>', convertedValue.toString());
+          url = url.replaceAll(
+              '<${converter.name}:$groupName>', convertedValue.toString());
         } catch (e) {
           return null;
         }
@@ -266,17 +271,17 @@ class HttpMethodNotAllowed implements Exception {
   final String message;
   final List<String> allowedMethods;
   final int statusCode;
-  
-  HttpMethodNotAllowed(this.message, {required this.allowedMethods}) 
+
+  HttpMethodNotAllowed(this.message, {required this.allowedMethods})
       : statusCode = 405;
-  
+
   HttpResponse toResponse() {
     return HttpResponse.methodNotAllowed(
       message,
       allowedMethods: allowedMethods,
     );
   }
-  
+
   @override
   String toString() => 'HttpMethodNotAllowed: $message';
 }

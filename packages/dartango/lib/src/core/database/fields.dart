@@ -33,12 +33,12 @@ abstract class Field<T> {
 
   String get sqlType;
   String get dartType;
-  
+
   T? clean(dynamic value);
   void validate(T? value);
   String toSqlValue(T? value);
   T? fromSqlValue(dynamic value);
-  
+
   Map<String, dynamic> toJson() {
     return {
       'type': runtimeType.toString(),
@@ -54,27 +54,27 @@ abstract class Field<T> {
       'blank': blank,
     };
   }
-  
+
   String generateSqlDefinition(String columnName) {
     final buffer = StringBuffer();
     buffer.write('$columnName $sqlType');
-    
+
     if (primaryKey) {
       buffer.write(' PRIMARY KEY');
     }
-    
+
     if (!allowNull && !primaryKey) {
       buffer.write(' NOT NULL');
     }
-    
+
     if (unique && !primaryKey) {
       buffer.write(' UNIQUE');
     }
-    
+
     if (defaultValue != null) {
       buffer.write(' DEFAULT ${toSqlValue(defaultValue)}');
     }
-    
+
     return buffer.toString();
   }
 }
@@ -95,7 +95,7 @@ class AutoField extends Field<int> {
 
   @override
   String get sqlType => 'INTEGER PRIMARY KEY AUTOINCREMENT';
-  
+
   @override
   String get dartType => 'int';
 
@@ -155,7 +155,7 @@ class IntegerField extends Field<int> {
 
   @override
   String get sqlType => 'INTEGER';
-  
+
   @override
   String get dartType => 'int';
 
@@ -172,11 +172,11 @@ class IntegerField extends Field<int> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     if (value != null && choices.isNotEmpty && !choices.containsKey(value)) {
       throw ValidationException('Invalid choice: $value');
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
@@ -228,7 +228,7 @@ class CharField extends Field<String> {
 
   @override
   String get sqlType => 'VARCHAR($maxLength)';
-  
+
   @override
   String get dartType => 'String';
 
@@ -243,28 +243,31 @@ class CharField extends Field<String> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     if (value != null) {
       if (value.length > maxLength) {
-        throw ValidationException('String too long (max $maxLength characters)');
+        throw ValidationException(
+            'String too long (max $maxLength characters)');
       }
-      
+
       if (minLength != null && value.length < minLength!) {
-        throw ValidationException('String too short (min $minLength characters)');
+        throw ValidationException(
+            'String too short (min $minLength characters)');
       }
-      
+
       if (choices.isNotEmpty && !choices.containsKey(value)) {
         throw ValidationException('Invalid choice: $value');
       }
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
   }
 
   @override
-  String toSqlValue(String? value) => value != null ? "'${value.replaceAll("'", "''")}'" : 'NULL';
+  String toSqlValue(String? value) =>
+      value != null ? "'${value.replaceAll("'", "''")}'" : 'NULL';
 
   @override
   String? fromSqlValue(dynamic value) {
@@ -302,7 +305,7 @@ class TextField extends Field<String> {
 
   @override
   String get sqlType => 'TEXT';
-  
+
   @override
   String get dartType => 'String';
 
@@ -317,18 +320,19 @@ class TextField extends Field<String> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     if (value != null && choices.isNotEmpty && !choices.containsKey(value)) {
       throw ValidationException('Invalid choice: $value');
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
   }
 
   @override
-  String toSqlValue(String? value) => value != null ? "'${value.replaceAll("'", "''")}'" : 'NULL';
+  String toSqlValue(String? value) =>
+      value != null ? "'${value.replaceAll("'", "''")}'" : 'NULL';
 
   @override
   String? fromSqlValue(dynamic value) {
@@ -366,7 +370,7 @@ class BooleanField extends Field<bool> {
 
   @override
   String get sqlType => 'BOOLEAN';
-  
+
   @override
   String get dartType => 'bool';
 
@@ -388,7 +392,7 @@ class BooleanField extends Field<bool> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
@@ -448,7 +452,7 @@ class DateTimeField extends Field<DateTime> {
 
   @override
   String get sqlType => 'TIMESTAMP';
-  
+
   @override
   String get dartType => 'DateTime';
 
@@ -466,7 +470,7 @@ class DateTimeField extends Field<DateTime> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
@@ -517,7 +521,7 @@ class DateField extends Field<DateTime> {
 
   @override
   String get sqlType => 'DATE';
-  
+
   @override
   String get dartType => 'DateTime';
 
@@ -527,7 +531,8 @@ class DateField extends Field<DateTime> {
     if (value is DateTime) return DateTime(value.year, value.month, value.day);
     if (value is String) {
       final parsed = DateTime.tryParse(value);
-      if (parsed != null) return DateTime(parsed.year, parsed.month, parsed.day);
+      if (parsed != null)
+        return DateTime(parsed.year, parsed.month, parsed.day);
     }
     throw ValidationException('Invalid date value: $value');
   }
@@ -537,7 +542,7 @@ class DateField extends Field<DateTime> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
@@ -555,7 +560,8 @@ class DateField extends Field<DateTime> {
     if (value is DateTime) return DateTime(value.year, value.month, value.day);
     if (value is String) {
       final parsed = DateTime.tryParse(value);
-      if (parsed != null) return DateTime(parsed.year, parsed.month, parsed.day);
+      if (parsed != null)
+        return DateTime(parsed.year, parsed.month, parsed.day);
     }
     return null;
   }
@@ -590,7 +596,7 @@ class FloatField extends Field<double> {
 
   @override
   String get sqlType => 'FLOAT';
-  
+
   @override
   String get dartType => 'double';
 
@@ -608,11 +614,11 @@ class FloatField extends Field<double> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     if (value != null && choices.isNotEmpty && !choices.containsKey(value)) {
       throw ValidationException('Invalid choice: $value');
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
@@ -665,7 +671,7 @@ class DecimalField extends Field<double> {
 
   @override
   String get sqlType => 'DECIMAL($maxDigits,$decimalPlaces)';
-  
+
   @override
   String get dartType => 'double';
 
@@ -683,22 +689,22 @@ class DecimalField extends Field<double> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     if (value != null) {
       final valueStr = value.toString();
       final parts = valueStr.split('.');
       final integerPart = parts[0].replaceAll('-', '');
       final decimalPart = parts.length > 1 ? parts[1] : '';
-      
+
       if (integerPart.length + decimalPart.length > maxDigits) {
         throw ValidationException('Number has too many digits');
       }
-      
+
       if (decimalPart.length > decimalPlaces) {
         throw ValidationException('Number has too many decimal places');
       }
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
@@ -749,9 +755,10 @@ class EmailField extends CharField {
   @override
   void validate(String? value) {
     super.validate(value);
-    
+
     if (value != null && value.isNotEmpty) {
-      final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+      final emailRegex =
+          RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
       if (!emailRegex.hasMatch(value)) {
         throw ValidationException('Invalid email format');
       }
@@ -791,7 +798,7 @@ class URLField extends CharField {
   @override
   void validate(String? value) {
     super.validate(value);
-    
+
     if (value != null && value.isNotEmpty) {
       final uri = Uri.tryParse(value);
       if (uri == null || (!uri.hasScheme) || (!uri.hasAuthority)) {
@@ -830,7 +837,7 @@ class JSONField extends Field<dynamic> {
 
   @override
   String get sqlType => 'JSON';
-  
+
   @override
   String get dartType => 'dynamic';
 
@@ -852,7 +859,7 @@ class JSONField extends Field<dynamic> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
@@ -907,7 +914,7 @@ class BinaryField extends Field<Uint8List> {
 
   @override
   String get sqlType => 'BLOB';
-  
+
   @override
   String get dartType => 'Uint8List';
 
@@ -925,7 +932,7 @@ class BinaryField extends Field<Uint8List> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
@@ -979,11 +986,12 @@ class SlugField extends CharField {
   @override
   void validate(String? value) {
     super.validate(value);
-    
+
     if (value != null && value.isNotEmpty) {
       final slugRegex = RegExp(r'^[-a-zA-Z0-9_]+$');
       if (!slugRegex.hasMatch(value)) {
-        throw ValidationException('Invalid slug format (only letters, numbers, underscores and hyphens allowed)');
+        throw ValidationException(
+            'Invalid slug format (only letters, numbers, underscores and hyphens allowed)');
       }
     }
   }
@@ -1018,7 +1026,7 @@ class UUIDField extends Field<String> {
 
   @override
   String get sqlType => 'UUID';
-  
+
   @override
   String get dartType => 'String';
 
@@ -1037,11 +1045,11 @@ class UUIDField extends Field<String> {
     if (value == null && !allowNull) {
       throw ValidationException('This field cannot be null');
     }
-    
+
     if (value != null && !_isValidUUID(value)) {
       throw ValidationException('Invalid UUID format');
     }
-    
+
     for (final validator in validators) {
       validator.validate(value);
     }
@@ -1057,7 +1065,8 @@ class UUIDField extends Field<String> {
   }
 
   bool _isValidUUID(String value) {
-    final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    final uuidRegex = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
     return uuidRegex.hasMatch(value);
   }
 }

@@ -175,7 +175,8 @@ extension ${className}Objects on $className {
 
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final migrationFileName = '${timestamp}_create_${_toSnakeCase(name)}.dart';
-    final migrationFile = File(path.join(migrationsDir.path, migrationFileName));
+    final migrationFile =
+        File(path.join(migrationsDir.path, migrationFileName));
 
     final migrationContent = _generateMigrationContent();
     await migrationFile.writeAsString(migrationContent);
@@ -219,13 +220,15 @@ class Create$className extends Migration {
   String _toPascalCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join('');
   }
 
   String _toSnakeCase(String input) {
     return input
-        .replaceAllMapped(RegExp(r'([A-Z])'), (match) => '_${match.group(1)!.toLowerCase()}')
+        .replaceAllMapped(
+            RegExp(r'([A-Z])'), (match) => '_${match.group(1)!.toLowerCase()}')
         .replaceFirst(RegExp(r'^_'), '')
         .toLowerCase();
   }
@@ -233,7 +236,8 @@ class Create$className extends Migration {
   String _toTitleCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join(' ');
   }
 }

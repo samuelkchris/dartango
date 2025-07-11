@@ -398,13 +398,15 @@ await commandManager.run(['$commandName', '--verbose', '--option1=custom_value']
   String _toPascalCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join('');
   }
 
   String _toSnakeCase(String input) {
     return input
-        .replaceAllMapped(RegExp(r'([A-Z])'), (match) => '_${match.group(1)!.toLowerCase()}')
+        .replaceAllMapped(
+            RegExp(r'([A-Z])'), (match) => '_${match.group(1)!.toLowerCase()}')
         .replaceFirst(RegExp(r'^_'), '')
         .toLowerCase();
   }
@@ -412,7 +414,8 @@ await commandManager.run(['$commandName', '--verbose', '--option1=custom_value']
   String _toTitleCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join(' ');
   }
 }

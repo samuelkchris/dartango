@@ -127,7 +127,8 @@ class EmailValidator extends Validator<String> {
   @override
   void validate(String? value) {
     if (value != null && value.isNotEmpty) {
-      final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+      final emailRegex =
+          RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
       if (!emailRegex.hasMatch(value)) {
         throw ValidationException(message);
       }
@@ -161,7 +162,8 @@ class UUIDValidator extends Validator<String> {
   @override
   void validate(String? value) {
     if (value != null && value.isNotEmpty) {
-      final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      final uuidRegex = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
       if (!uuidRegex.hasMatch(value)) {
         throw ValidationException(message);
       }
@@ -173,7 +175,9 @@ class SlugValidator extends Validator<String> {
   @override
   final String message;
 
-  SlugValidator({this.message = 'Invalid slug format (only letters, numbers, underscores and hyphens allowed)'});
+  SlugValidator(
+      {this.message =
+          'Invalid slug format (only letters, numbers, underscores and hyphens allowed)'});
 
   @override
   void validate(String? value) {
@@ -195,9 +199,10 @@ class IPAddressValidator extends Validator<String> {
   @override
   void validate(String? value) {
     if (value != null && value.isNotEmpty) {
-      final ipv4Regex = RegExp(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
+      final ipv4Regex = RegExp(
+          r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$');
       final ipv6Regex = RegExp(r'^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$');
-      
+
       if (!ipv4Regex.hasMatch(value) && !ipv6Regex.hasMatch(value)) {
         throw ValidationException(message);
       }
@@ -212,7 +217,8 @@ class DecimalValidator extends Validator<double> {
   final String message;
 
   DecimalValidator(this.maxDigits, this.decimalPlaces, {String? message})
-      : message = message ?? 'Invalid decimal format (max $maxDigits digits with $decimalPlaces decimal places)';
+      : message = message ??
+            'Invalid decimal format (max $maxDigits digits with $decimalPlaces decimal places)';
 
   @override
   void validate(double? value) {
@@ -221,11 +227,11 @@ class DecimalValidator extends Validator<double> {
       final parts = valueStr.split('.');
       final integerPart = parts[0].replaceAll('-', '');
       final decimalPart = parts.length > 1 ? parts[1] : '';
-      
+
       if (integerPart.length + decimalPart.length > maxDigits) {
         throw ValidationException('Number has too many digits');
       }
-      
+
       if (decimalPart.length > decimalPlaces) {
         throw ValidationException('Number has too many decimal places');
       }
@@ -270,7 +276,8 @@ class FileExtensionValidator extends Validator<String> {
   final String message;
 
   FileExtensionValidator(this.allowedExtensions, {String? message})
-      : message = message ?? 'Invalid file extension. Allowed: ${allowedExtensions.join(', ')}';
+      : message = message ??
+            'Invalid file extension. Allowed: ${allowedExtensions.join(', ')}';
 
   @override
   void validate(String? value) {
@@ -289,7 +296,8 @@ class FileSizeValidator extends Validator<int> {
   final String message;
 
   FileSizeValidator(this.maxSize, {String? message})
-      : message = message ?? 'File size must be less than ${_formatBytes(maxSize)}';
+      : message =
+            message ?? 'File size must be less than ${_formatBytes(maxSize)}';
 
   @override
   void validate(int? value) {
@@ -323,11 +331,13 @@ class DateRangeValidator extends Validator<DateTime> {
   void validate(DateTime? value) {
     if (value != null) {
       if (minDate != null && value.isBefore(minDate!)) {
-        throw ValidationException('Date must be after ${minDate!.toIso8601String().split('T')[0]}');
+        throw ValidationException(
+            'Date must be after ${minDate!.toIso8601String().split('T')[0]}');
       }
-      
+
       if (maxDate != null && value.isAfter(maxDate!)) {
-        throw ValidationException('Date must be before ${maxDate!.toIso8601String().split('T')[0]}');
+        throw ValidationException(
+            'Date must be before ${maxDate!.toIso8601String().split('T')[0]}');
       }
     }
   }
@@ -374,21 +384,21 @@ class CreditCardValidator extends Validator<String> {
 
     int sum = 0;
     bool alternate = false;
-    
+
     for (int i = cardNumber.length - 1; i >= 0; i--) {
       int digit = int.parse(cardNumber[i]);
-      
+
       if (alternate) {
         digit *= 2;
         if (digit > 9) {
           digit = (digit % 10) + 1;
         }
       }
-      
+
       sum += digit;
       alternate = !alternate;
     }
-    
+
     return sum % 10 == 0;
   }
 }
@@ -433,29 +443,31 @@ class StrongPasswordValidator extends Validator<String> {
   void validate(String? value) {
     if (value != null && value.isNotEmpty) {
       final errors = <String>[];
-      
+
       if (value.length < minLength) {
         errors.add('at least $minLength characters');
       }
-      
+
       if (requireUppercase && !value.contains(RegExp(r'[A-Z]'))) {
         errors.add('at least one uppercase letter');
       }
-      
+
       if (requireLowercase && !value.contains(RegExp(r'[a-z]'))) {
         errors.add('at least one lowercase letter');
       }
-      
+
       if (requireNumbers && !value.contains(RegExp(r'[0-9]'))) {
         errors.add('at least one number');
       }
-      
-      if (requireSpecialChars && !value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+
+      if (requireSpecialChars &&
+          !value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
         errors.add('at least one special character');
       }
-      
+
       if (errors.isNotEmpty) {
-        throw ValidationException('Password must contain: ${errors.join(', ')}');
+        throw ValidationException(
+            'Password must contain: ${errors.join(', ')}');
       }
     }
   }
@@ -466,7 +478,8 @@ class UniqueValidator<T> extends Validator<T> {
   @override
   final String message;
 
-  UniqueValidator(this.checkUnique, {this.message = 'This value must be unique'});
+  UniqueValidator(this.checkUnique,
+      {this.message = 'This value must be unique'});
 
   @override
   void validate(T? value) {
@@ -496,11 +509,18 @@ List<Validator<String>> validateLength({int? min, int? max}) {
   return validators;
 }
 
-List<Validator<T>> validateRange<T extends num>(T min, T max) => [RangeValidator(min, max)];
-List<Validator<T>> validateChoices<T>(Map<T, String> choices) => [ChoicesValidator(choices)];
-List<Validator<String>> validateRegex(RegExp regex, {String? message}) => [RegexValidator(regex, message: message)];
-List<Validator<String>> validateFileExtension(List<String> extensions) => [FileExtensionValidator(extensions)];
-List<Validator<int>> validateFileSize(int maxSize) => [FileSizeValidator(maxSize)];
-List<Validator<DateTime>> validateDateRange({DateTime? min, DateTime? max}) => [DateRangeValidator(minDate: min, maxDate: max)];
-List<Validator<double>> validateDecimal(int maxDigits, int decimalPlaces) => [DecimalValidator(maxDigits, decimalPlaces)];
+List<Validator<T>> validateRange<T extends num>(T min, T max) =>
+    [RangeValidator(min, max)];
+List<Validator<T>> validateChoices<T>(Map<T, String> choices) =>
+    [ChoicesValidator(choices)];
+List<Validator<String>> validateRegex(RegExp regex, {String? message}) =>
+    [RegexValidator(regex, message: message)];
+List<Validator<String>> validateFileExtension(List<String> extensions) =>
+    [FileExtensionValidator(extensions)];
+List<Validator<int>> validateFileSize(int maxSize) =>
+    [FileSizeValidator(maxSize)];
+List<Validator<DateTime>> validateDateRange({DateTime? min, DateTime? max}) =>
+    [DateRangeValidator(minDate: min, maxDate: max)];
+List<Validator<double>> validateDecimal(int maxDigits, int decimalPlaces) =>
+    [DecimalValidator(maxDigits, decimalPlaces)];
 List<Validator<String>> validateJSON() => [JSONValidator()];

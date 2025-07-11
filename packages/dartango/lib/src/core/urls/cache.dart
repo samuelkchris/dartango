@@ -313,8 +313,9 @@ class ReverseCacheEntry {
     return Object.hash(
       viewName,
       kwargs?.entries
-          .map((e) => Object.hash(e.key, e.value))
-          .fold<int>(0, (a, b) => a ^ b) ?? 0,
+              .map((e) => Object.hash(e.key, e.value))
+              .fold<int>(0, (a, b) => a ^ b) ??
+          0,
       args?.fold<int>(0, (a, b) => a.hashCode ^ b.hashCode) ?? 0,
     );
   }

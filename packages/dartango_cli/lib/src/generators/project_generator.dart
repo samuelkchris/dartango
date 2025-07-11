@@ -61,7 +61,8 @@ dev_dependencies:
   lints: ^3.0.0
 ''';
 
-    await File(path.join(outputPath, 'pubspec.yaml')).writeAsString(pubspecContent);
+    await File(path.join(outputPath, 'pubspec.yaml'))
+        .writeAsString(pubspecContent);
   }
 
   Future<void> _generateMainFile() async {
@@ -141,7 +142,8 @@ class HomeView extends TemplateView {
 }
 ''';
 
-    await File(path.join(libDir.path, 'views.dart')).writeAsString(viewsContent);
+    await File(path.join(libDir.path, 'views.dart'))
+        .writeAsString(viewsContent);
   }
 
   Future<void> _generateTestFiles() async {
@@ -171,7 +173,8 @@ void main() {
 }
 ''';
 
-    await File(path.join(testDir.path, 'app_test.dart')).writeAsString(testContent);
+    await File(path.join(testDir.path, 'app_test.dart'))
+        .writeAsString(testContent);
   }
 
   Future<void> _generateConfigFiles() async {
@@ -191,7 +194,8 @@ linter:
     - avoid_print
 ''';
 
-    await File(path.join(outputPath, 'analysis_options.yaml')).writeAsString(analysisContent);
+    await File(path.join(outputPath, 'analysis_options.yaml'))
+        .writeAsString(analysisContent);
   }
 
   Future<void> _generateDocumentation() async {
@@ -300,7 +304,8 @@ All notable changes to this project will be documented in this file.
 - Basic web application functionality
 ''';
 
-    await File(path.join(outputPath, 'CHANGELOG.md')).writeAsString(changelogContent);
+    await File(path.join(outputPath, 'CHANGELOG.md'))
+        .writeAsString(changelogContent);
   }
 
   Future<void> _generateGitIgnore() async {
@@ -333,7 +338,8 @@ coverage/
 config/local.yaml
 ''';
 
-    await File(path.join(outputPath, '.gitignore')).writeAsString(gitignoreContent);
+    await File(path.join(outputPath, '.gitignore'))
+        .writeAsString(gitignoreContent);
   }
 
   Future<void> _generateDefaultTemplate() async {
@@ -411,15 +417,16 @@ config/local.yaml
 </html>
 ''';
 
-    await File(path.join(templatesDir.path, 'home.html')).writeAsString(homeTemplate);
+    await File(path.join(templatesDir.path, 'home.html'))
+        .writeAsString(homeTemplate);
 
     // Generate static directory
     final staticDir = Directory(path.join(outputPath, 'static'));
     await staticDir.create(recursive: true);
-    
+
     final cssDir = Directory(path.join(staticDir.path, 'css'));
     await cssDir.create(recursive: true);
-    
+
     final jsDir = Directory(path.join(staticDir.path, 'js'));
     await jsDir.create(recursive: true);
   }
@@ -442,13 +449,14 @@ config/local.yaml
 </html>
 ''';
 
-    await File(path.join(templatesDir.path, 'home.html')).writeAsString(minimalTemplate);
+    await File(path.join(templatesDir.path, 'home.html'))
+        .writeAsString(minimalTemplate);
   }
 
   Future<void> _generateApiOnlyTemplate() async {
     // Generate API-specific files
     final libDir = Directory(path.join(outputPath, 'lib'));
-    
+
     // Override the views file for API
     final apiViewsContent = '''
 import 'package:dartango/dartango.dart';
@@ -478,7 +486,8 @@ class HealthView extends View {
 }
 ''';
 
-    await File(path.join(libDir.path, 'views.dart')).writeAsString(apiViewsContent);
+    await File(path.join(libDir.path, 'views.dart'))
+        .writeAsString(apiViewsContent);
 
     // Override URLs for API
     final apiUrlsContent = '''
@@ -491,13 +500,15 @@ final urlPatterns = [
 ];
 ''';
 
-    await File(path.join(libDir.path, 'urls.dart')).writeAsString(apiUrlsContent);
+    await File(path.join(libDir.path, 'urls.dart'))
+        .writeAsString(apiUrlsContent);
   }
 
   String _toPascalCase(String input) {
     return input
         .split('_')
-        .map((word) => word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
+        .map((word) =>
+            word.isNotEmpty ? word[0].toUpperCase() + word.substring(1) : '')
         .join('');
   }
 }

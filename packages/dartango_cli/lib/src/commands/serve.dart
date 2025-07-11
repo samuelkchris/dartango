@@ -26,15 +26,16 @@ Examples:
   @override
   ArgParser get argParser {
     final parser = ArgParser();
-    parser.addOption('host', abbr: 'h', defaultsTo: 'localhost',
-        help: 'Host to bind the server to');
-    parser.addOption('port', abbr: 'p', defaultsTo: '8000',
-        help: 'Port to bind the server to');
-    parser.addFlag('debug', abbr: 'd', defaultsTo: true,
-        help: 'Enable debug mode');
-    parser.addFlag('hot-reload', defaultsTo: true,
-        help: 'Enable hot reload');
-    parser.addFlag('open', abbr: 'o', defaultsTo: false,
+    parser.addOption('host',
+        abbr: 'h', defaultsTo: 'localhost', help: 'Host to bind the server to');
+    parser.addOption('port',
+        abbr: 'p', defaultsTo: '8000', help: 'Port to bind the server to');
+    parser.addFlag('debug',
+        abbr: 'd', defaultsTo: true, help: 'Enable debug mode');
+    parser.addFlag('hot-reload', defaultsTo: true, help: 'Enable hot reload');
+    parser.addFlag('open',
+        abbr: 'o',
+        defaultsTo: false,
         help: 'Open the app in the default browser');
     return parser;
   }
@@ -89,7 +90,7 @@ Examples:
 
       // Wait for the process to complete
       final exitCode = await process.exitCode;
-      
+
       if (exitCode != 0) {
         printError('Server exited with code $exitCode');
       }
@@ -116,7 +117,7 @@ Examples:
   bool _isInDartangoProject() {
     final pubspecFile = File('pubspec.yaml');
     if (!pubspecFile.existsSync()) return false;
-    
+
     final content = pubspecFile.readAsStringSync();
     return content.contains('dartango');
   }

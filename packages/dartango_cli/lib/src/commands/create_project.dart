@@ -32,12 +32,16 @@ Examples:
   @override
   ArgParser get argParser {
     final parser = ArgParser();
-    parser.addOption('template', abbr: 't', defaultsTo: 'default',
+    parser.addOption('template',
+        abbr: 't',
+        defaultsTo: 'default',
         allowed: ['default', 'minimal', 'api-only'],
         help: 'Template to use for the project');
-    parser.addOption('output', abbr: 'o', defaultsTo: '.',
-        help: 'Output directory for the project');
-    parser.addFlag('force', abbr: 'f', defaultsTo: false,
+    parser.addOption('output',
+        abbr: 'o', defaultsTo: '.', help: 'Output directory for the project');
+    parser.addFlag('force',
+        abbr: 'f',
+        defaultsTo: false,
         help: 'Overwrite existing project directory');
     return parser;
   }
@@ -57,7 +61,8 @@ Examples:
 
     if (!_isValidProjectName(projectName)) {
       printError('Invalid project name: $projectName');
-      printInfo('Project name must contain only letters, numbers, and underscores');
+      printInfo(
+          'Project name must contain only letters, numbers, and underscores');
       return;
     }
 
@@ -70,12 +75,12 @@ Examples:
         printInfo('Use --force to overwrite existing directory');
         return;
       }
-      
+
       if (!confirm('Directory "$projectPath" already exists. Overwrite?')) {
         printInfo('Project creation cancelled');
         return;
       }
-      
+
       await projectDir.delete(recursive: true);
     }
 
@@ -91,7 +96,7 @@ Examples:
       );
 
       await generator.generate();
-      
+
       printSuccess('Project created successfully!');
       print('');
       print('Next steps:');

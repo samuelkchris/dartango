@@ -27,11 +27,11 @@ class RedisCache extends CacheBackend {
   Future<T?> get<T>(String key) async {
     final redisKey = _makeRedisKey(key);
     final value = await _redisGet(redisKey);
-    
+
     if (value == null) {
       return null;
     }
-    
+
     return deserialize<T>(value);
   }
 
@@ -40,7 +40,7 @@ class RedisCache extends CacheBackend {
     final redisKey = _makeRedisKey(key);
     final serializedValue = serialize(value);
     final ttl = timeout ?? _defaultTimeout;
-    
+
     await _redisSetex(redisKey, ttl.inSeconds, serializedValue);
   }
 
@@ -54,7 +54,7 @@ class RedisCache extends CacheBackend {
   Future<void> clear() async {
     final pattern = '$keyPrefix*';
     final keys = await _redisKeys(pattern);
-    
+
     if (keys.isNotEmpty) {
       await _redisDel(keys);
     }
@@ -77,7 +77,7 @@ class RedisCache extends CacheBackend {
   Future<List<String>> keys() async {
     final pattern = '$keyPrefix*';
     final redisKeys = await _redisKeys(pattern);
-    
+
     return redisKeys.map((redisKey) {
       return redisKey.substring(keyPrefix.length);
     }).toList();
@@ -87,7 +87,7 @@ class RedisCache extends CacheBackend {
   Future<Map<String, T>> getMany<T>(List<String> keys) async {
     final redisKeys = keys.map(_makeRedisKey).toList();
     final values = await _redisMGet(redisKeys);
-    
+
     final result = <String, T>{};
     for (int i = 0; i < keys.length; i++) {
       final value = values[i];
@@ -98,14 +98,14 @@ class RedisCache extends CacheBackend {
         }
       }
     }
-    
+
     return result;
   }
 
   @override
   Future<void> setMany<T>(Map<String, T> values, {Duration? timeout}) async {
     final ttl = (timeout ?? _defaultTimeout).inSeconds;
-    
+
     for (final entry in values.entries) {
       final redisKey = _makeRedisKey(entry.key);
       final serializedValue = serialize(entry.value);
@@ -120,12 +120,13 @@ class RedisCache extends CacheBackend {
   }
 
   @override
-  Future<T?> getOrSet<T>(String key, Future<T> Function() factory, {Duration? timeout}) async {
+  Future<T?> getOrSet<T>(String key, Future<T> Function() factory,
+      {Duration? timeout}) async {
     final existing = await get<T>(key);
     if (existing != null) {
       return existing;
     }
-    
+
     final value = await factory();
     await set(key, value, timeout: timeout);
     return value;
@@ -160,11 +161,11 @@ class RedisCache extends CacheBackend {
   Future<Duration?> ttl(String key) async {
     final redisKey = _makeRedisKey(key);
     final seconds = await _redisTtl(redisKey);
-    
+
     if (seconds == -1 || seconds == -2) {
       return null;
     }
-    
+
     return Duration(seconds: seconds);
   }
 
@@ -172,11 +173,9 @@ class RedisCache extends CacheBackend {
     return null;
   }
 
-  Future<void> _redisSetex(String key, int seconds, String value) async {
-  }
+  Future<void> _redisSetex(String key, int seconds, String value) async {}
 
-  Future<void> _redisDel(dynamic keys) async {
-  }
+  Future<void> _redisDel(dynamic keys) async {}
 
   Future<bool> _redisExists(String key) async {
     return false;
@@ -190,8 +189,7 @@ class RedisCache extends CacheBackend {
     return List.filled(keys.length, null);
   }
 
-  Future<void> _redisExpire(String key, int seconds) async {
-  }
+  Future<void> _redisExpire(String key, int seconds) async {}
 
   Future<int> _redisIncrBy(String key, int increment) async {
     return increment;
@@ -225,7 +223,7 @@ class DatabaseCache extends CacheBackend {
   Future<T?> get<T>(String key) async {
     final cacheKey = makeKey(key);
     final row = await _queryCache(cacheKey);
-    
+
     if (row == null) {
       return null;
     }
@@ -250,7 +248,7 @@ class DatabaseCache extends CacheBackend {
     final cacheKey = makeKey(key);
     final serializedValue = serialize(value);
     final expiry = DateTime.now().add(timeout ?? _defaultTimeout);
-    
+
     await _upsertCache(cacheKey, serializedValue, expiry);
   }
 
@@ -309,12 +307,13 @@ class DatabaseCache extends CacheBackend {
   }
 
   @override
-  Future<T?> getOrSet<T>(String key, Future<T> Function() factory, {Duration? timeout}) async {
+  Future<T?> getOrSet<T>(String key, Future<T> Function() factory,
+      {Duration? timeout}) async {
     final existing = await get<T>(key);
     if (existing != null) {
       return existing;
     }
-    
+
     final value = await factory();
     await set(key, value, timeout: timeout);
     return value;
@@ -353,7 +352,7 @@ class DatabaseCache extends CacheBackend {
   Future<Duration?> ttl(String key) async {
     final cacheKey = makeKey(key);
     final row = await _queryCache(cacheKey);
-    
+
     if (row == null) {
       return null;
     }
@@ -380,14 +379,11 @@ class DatabaseCache extends CacheBackend {
     return null;
   }
 
-  Future<void> _upsertCache(String key, String value, DateTime expiry) async {
-  }
+  Future<void> _upsertCache(String key, String value, DateTime expiry) async {}
 
-  Future<void> _deleteCache(String key) async {
-  }
+  Future<void> _deleteCache(String key) async {}
 
-  Future<void> _clearAllCache() async {
-  }
+  Future<void> _clearAllCache() async {}
 
   Future<int> _countCache() async {
     return 0;
@@ -397,6 +393,5 @@ class DatabaseCache extends CacheBackend {
     return [];
   }
 
-  Future<void> _cleanupExpired() async {
-  }
+  Future<void> _cleanupExpired() async {}
 }
