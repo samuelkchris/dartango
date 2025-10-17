@@ -56,7 +56,9 @@ abstract class Form {
 
   void addError(String fieldName, String error) {
     _errors.putIfAbsent(fieldName, () => []).add(error);
-    _isValid = false;
+    if (!_hasValidated) {
+      _isValid = false;
+    }
   }
 
   void addFieldError(String fieldName, String error) {
@@ -84,8 +86,8 @@ abstract class Form {
 
     // Clean and validate each field
     for (final entry in _fields.entries) {
-      final fieldName = entry.key;
       final field = entry.value;
+      final fieldName = field.name;
 
       try {
         final rawValue = getFieldValue(fieldName);
@@ -119,13 +121,164 @@ abstract class Form {
     // Override in subclasses for form-level validation
   }
 
+  String _renderField(FormField field, String fieldName, dynamic value) {
+    // Create a copy of the field with the current value for rendering
+    if (field is CharField) {
+      return _renderCharField(field, fieldName, value);
+    } else if (field is IntegerField) {
+      return _renderIntegerField(field, fieldName, value);
+    } else if (field is FloatField) {
+      return _renderFloatField(field, fieldName, value);
+    } else if (field is BooleanField) {
+      return _renderBooleanField(field, fieldName, value);
+    } else if (field is DateTimeField) {
+      return _renderDateTimeField(field, fieldName, value);
+    } else if (field is ChoiceField) {
+      return _renderChoiceField(field, fieldName, value);
+    } else if (field is FileField) {
+      return _renderFileField(field, fieldName, value);
+    }
+    return field.toHtml(attributes: {'id': 'id_$fieldName'});
+  }
+
+  String _renderCharField(CharField field, String fieldName, dynamic value) {
+    final attrs = <String, String>{
+      'id': 'id_$fieldName',
+      'type': field is PasswordField ? 'password' : (field is EmailField ? 'email' : 'text'),
+      'name': fieldName,
+    };
+    if (value != null) attrs['value'] = value.toString();
+    if (field.maxLength != null) attrs['maxlength'] = field.maxLength.toString();
+    if (field.disabled) attrs['disabled'] = 'disabled';
+    if (field.required) attrs['required'] = 'required';
+
+    if (field is TextAreaField) {
+      attrs.remove('type');
+      attrs.remove('value');
+      attrs['rows'] = field.rows.toString();
+      attrs['cols'] = field.cols.toString();
+      final content = value?.toString() ?? '';
+      return '<textarea ${_attributesToString(attrs)}>$content</textarea>';
+    }
+
+    return '<input ${_attributesToString(attrs)} />';
+  }
+
+  String _renderIntegerField(IntegerField field, String fieldName, dynamic value) {
+    final attrs = <String, String>{
+      'id': 'id_$fieldName',
+      'type': 'number',
+      'name': fieldName,
+      'step': '1',
+    };
+    if (value != null) attrs['value'] = value.toString();
+    if (field.maxValue != null) attrs['max'] = field.maxValue.toString();
+    if (field.minValue != null) attrs['min'] = field.minValue.toString();
+    if (field.disabled) attrs['disabled'] = 'disabled';
+    if (field.required) attrs['required'] = 'required';
+
+    return '<input ${_attributesToString(attrs)} />';
+  }
+
+  String _renderFloatField(FloatField field, String fieldName, dynamic value) {
+    final attrs = <String, String>{
+      'id': 'id_$fieldName',
+      'type': 'number',
+      'name': fieldName,
+      'step': 'any',
+    };
+    if (value != null) attrs['value'] = value.toString();
+    if (field.maxValue != null) attrs['max'] = field.maxValue.toString();
+    if (field.minValue != null) attrs['min'] = field.minValue.toString();
+    if (field.disabled) attrs['disabled'] = 'disabled';
+    if (field.required) attrs['required'] = 'required';
+
+    return '<input ${_attributesToString(attrs)} />';
+  }
+
+  String _renderBooleanField(BooleanField field, String fieldName, dynamic value) {
+    final attrs = <String, String>{
+      'id': 'id_$fieldName',
+      'type': 'checkbox',
+      'name': fieldName,
+      'value': '1',
+    };
+    if (value == true || value == 'true' || value == '1' || value == 'on') {
+      attrs['checked'] = 'checked';
+    }
+    if (field.disabled) attrs['disabled'] = 'disabled';
+
+    return '<input ${_attributesToString(attrs)} />';
+  }
+
+  String _renderDateTimeField(DateTimeField field, String fieldName, dynamic value) {
+    final attrs = <String, String>{
+      'id': 'id_$fieldName',
+      'type': field.includeTime ? 'datetime-local' : 'date',
+      'name': fieldName,
+    };
+    if (value != null) {
+      if (value is DateTime) {
+        if (field.includeTime) {
+          attrs['value'] = value.toIso8601String().substring(0, 19);
+        } else {
+          attrs['value'] = value.toIso8601String().substring(0, 10);
+        }
+      } else {
+        attrs['value'] = value.toString();
+      }
+    }
+    if (field.disabled) attrs['disabled'] = 'disabled';
+    if (field.required) attrs['required'] = 'required';
+
+    return '<input ${_attributesToString(attrs)} />';
+  }
+
+  String _renderChoiceField(ChoiceField field, String fieldName, dynamic value) {
+    final attrs = <String, String>{
+      'id': 'id_$fieldName',
+      'name': fieldName,
+    };
+    if (field.multiple) attrs['multiple'] = 'multiple';
+    if (field.disabled) attrs['disabled'] = 'disabled';
+
+    final optionsHtml = field.choices.map((choice) {
+      final selected = choice.value == value ? ' selected="selected"' : '';
+      return '<option value="${choice.value}"$selected>${choice.label}</option>';
+    }).join('\n');
+
+    return '<select ${_attributesToString(attrs)}>\n$optionsHtml\n</select>';
+  }
+
+  String _renderFileField(FileField field, String fieldName, dynamic value) {
+    final attrs = <String, String>{
+      'id': 'id_$fieldName',
+      'type': 'file',
+      'name': fieldName,
+    };
+    if (field.allowedExtensions.isNotEmpty) {
+      attrs['accept'] = field.allowedExtensions.map((ext) => '.$ext').join(',');
+    }
+    if (field.disabled) attrs['disabled'] = 'disabled';
+    if (field.required) attrs['required'] = 'required';
+
+    return '<input ${_attributesToString(attrs)} />';
+  }
+
+  String _attributesToString(Map<String, String> attributes) {
+    return attributes.entries
+        .map((entry) => '${entry.key}="${entry.value}"')
+        .join(' ');
+  }
+
   String asTable() {
     final buffer = StringBuffer();
 
     for (final entry in _fields.entries) {
-      final fieldName = entry.key;
       final field = entry.value;
+      final fieldName = field.name;
       final fieldErrors = getFieldErrors(fieldName);
+      final fieldValue = getFieldValue(fieldName);
 
       buffer.writeln('<tr>');
       buffer.writeln(
@@ -140,7 +293,7 @@ abstract class Form {
         buffer.writeln('</ul>');
       }
 
-      buffer.writeln(field.toHtml(attributes: {'id': 'id_$fieldName'}));
+      buffer.writeln(_renderField(field, fieldName, fieldValue));
 
       if (field.helpText != null) {
         buffer.writeln('<div class="helptext">${field.helpText}</div>');
@@ -181,9 +334,10 @@ abstract class Form {
     }
 
     for (final entry in _fields.entries) {
-      final fieldName = entry.key;
       final field = entry.value;
+      final fieldName = field.name;
       final fieldErrors = getFieldErrors(fieldName);
+      final fieldValue = getFieldValue(fieldName);
 
       buffer.writeln('<div class="form-group">');
       buffer.writeln('<label for="id_$fieldName">${field.getLabel()}</label>');
@@ -196,7 +350,7 @@ abstract class Form {
         buffer.writeln('</ul>');
       }
 
-      buffer.writeln(field.toHtml(attributes: {'id': 'id_$fieldName'}));
+      buffer.writeln(_renderField(field, fieldName, fieldValue));
 
       if (field.helpText != null) {
         buffer.writeln('<div class="helptext">${field.helpText}</div>');
@@ -223,9 +377,10 @@ abstract class Form {
     }
 
     for (final entry in _fields.entries) {
-      final fieldName = entry.key;
       final field = entry.value;
+      final fieldName = field.name;
       final fieldErrors = getFieldErrors(fieldName);
+      final fieldValue = getFieldValue(fieldName);
 
       buffer.writeln('<p>');
       buffer.writeln('<label for="id_$fieldName">${field.getLabel()}</label>');
@@ -238,7 +393,7 @@ abstract class Form {
         buffer.writeln('</ul>');
       }
 
-      buffer.writeln(field.toHtml(attributes: {'id': 'id_$fieldName'}));
+      buffer.writeln(_renderField(field, fieldName, fieldValue));
 
       if (field.helpText != null) {
         buffer.writeln('<span class="helptext">${field.helpText}</span>');
@@ -271,8 +426,8 @@ abstract class Form {
     for (final pair in pairs) {
       final keyValue = pair.split('=');
       if (keyValue.length == 2) {
-        final key = Uri.decodeComponent(keyValue[0]);
-        final value = Uri.decodeComponent(keyValue[1]);
+        final key = Uri.decodeComponent(keyValue[0].replaceAll('+', ' '));
+        final value = Uri.decodeComponent(keyValue[1].replaceAll('+', ' '));
 
         // Handle multiple values for the same key (e.g., checkboxes)
         if (data.containsKey(key)) {
