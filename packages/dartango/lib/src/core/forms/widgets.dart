@@ -553,6 +553,309 @@ class MultipleFileInput extends FileInput {
   }
 }
 
+class URLInput extends TextInput {
+  const URLInput({super.attributes}) : super(inputType: 'url');
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = super.toJson();
+    json['widget'] = 'URLInput';
+    return json;
+  }
+}
+
+class ColorInput extends TextInput {
+  const ColorInput({super.attributes}) : super(inputType: 'color');
+
+  @override
+  String render(String name, dynamic value,
+      {Map<String, String> attrs = const {}}) {
+    final allAttrs = _mergeAttributes(attrs);
+    allAttrs['type'] = 'color';
+    allAttrs['name'] = name;
+
+    if (value != null) {
+      String colorValue = value.toString();
+      if (!colorValue.startsWith('#')) {
+        colorValue = '#000000';
+      }
+      allAttrs['value'] = colorValue;
+    } else {
+      allAttrs['value'] = '#000000';
+    }
+
+    return '<input ${_attributesToString(allAttrs)} />';
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = super.toJson();
+    json['widget'] = 'ColorInput';
+    return json;
+  }
+}
+
+class RangeInput extends TextInput {
+  final num? min;
+  final num? max;
+  final String? step;
+
+  const RangeInput({
+    this.min,
+    this.max,
+    this.step,
+    super.attributes,
+  }) : super(inputType: 'range');
+
+  @override
+  String render(String name, dynamic value,
+      {Map<String, String> attrs = const {}}) {
+    final allAttrs = _mergeAttributes(attrs);
+    allAttrs['type'] = 'range';
+    allAttrs['name'] = name;
+    if (value != null) allAttrs['value'] = value.toString();
+    if (min != null) allAttrs['min'] = min.toString();
+    if (max != null) allAttrs['max'] = max.toString();
+    if (step != null) allAttrs['step'] = step!;
+
+    return '<input ${_attributesToString(allAttrs)} />';
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = super.toJson();
+    json['widget'] = 'RangeInput';
+    json['min'] = min;
+    json['max'] = max;
+    json['step'] = step;
+    return json;
+  }
+}
+
+class NullBooleanSelect extends Select {
+  const NullBooleanSelect({super.attributes})
+      : super(
+          choices: const [
+            Choice('', 'Unknown'),
+            Choice('true', 'Yes'),
+            Choice('false', 'No'),
+          ],
+        );
+
+  @override
+  String render(String name, dynamic value,
+      {Map<String, String> attrs = const {}}) {
+    String? selectedValue;
+    if (value == null) {
+      selectedValue = '';
+    } else if (value is bool) {
+      selectedValue = value.toString();
+    } else {
+      selectedValue = value.toString();
+    }
+
+    return super.render(name, selectedValue, attrs: attrs);
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'widget': 'NullBooleanSelect',
+      'attributes': attributes,
+    };
+  }
+}
+
+class SelectDateWidget extends Widget {
+  final int startYear;
+  final int endYear;
+  final List<String> months;
+
+  SelectDateWidget({
+    int? startYear,
+    int? endYear,
+    super.attributes,
+  })  : startYear = startYear ?? DateTime.now().year - 100,
+        endYear = endYear ?? DateTime.now().year + 10,
+        months = const [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+
+  @override
+  String render(String name, dynamic value,
+      {Map<String, String> attrs = const {}}) {
+    DateTime? dateValue;
+    if (value is DateTime) {
+      dateValue = value;
+    } else if (value is String) {
+      dateValue = DateTime.tryParse(value);
+    }
+
+    final yearOptions = <String>[];
+    for (int year = startYear; year <= endYear; year++) {
+      final selected = dateValue?.year == year ? ' selected="selected"' : '';
+      yearOptions.add('<option value="$year"$selected>$year</option>');
+    }
+
+    final monthOptions = <String>[];
+    for (int i = 0; i < months.length; i++) {
+      final monthNum = i + 1;
+      final selected = dateValue?.month == monthNum ? ' selected="selected"' : '';
+      monthOptions.add('<option value="$monthNum"$selected>${months[i]}</option>');
+    }
+
+    final dayOptions = <String>[];
+    for (int day = 1; day <= 31; day++) {
+      final selected = dateValue?.day == day ? ' selected="selected"' : '';
+      dayOptions.add('<option value="$day"$selected>$day</option>');
+    }
+
+    final selectAttrs = _attributesToString(_mergeAttributes(attrs));
+    final yearSelect = '<select name="${name}_year" $selectAttrs>\n${yearOptions.join('\n')}\n</select>';
+    final monthSelect = '<select name="${name}_month" $selectAttrs>\n${monthOptions.join('\n')}\n</select>';
+    final daySelect = '<select name="${name}_day" $selectAttrs>\n${dayOptions.join('\n')}\n</select>';
+
+    return '<div class="select-date-widget">$monthSelect $daySelect $yearSelect</div>';
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'widget': 'SelectDateWidget',
+      'start_year': startYear,
+      'end_year': endYear,
+      'attributes': attributes,
+    };
+  }
+}
+
+class ClearableFileInput extends FileInput {
+  final bool showClearCheckbox;
+  final String clearCheckboxLabel;
+
+  const ClearableFileInput({
+    this.showClearCheckbox = true,
+    this.clearCheckboxLabel = 'Clear',
+    super.accept,
+    super.attributes,
+  });
+
+  @override
+  String render(String name, dynamic value,
+      {Map<String, String> attrs = const {}}) {
+    final fileInput = super.render(name, value, attrs: attrs);
+
+    if (!showClearCheckbox || value == null) {
+      return fileInput;
+    }
+
+    final clearCheckboxAttrs = <String, String>{
+      'type': 'checkbox',
+      'name': '${name}_clear',
+      'id': '${name}_clear',
+    };
+
+    final checkbox = '<input ${_attributesToString(clearCheckboxAttrs)} />';
+    final label = '<label for="${name}_clear">${_escapeHtml(clearCheckboxLabel)}</label>';
+    final currentValue = value != null ? '<div class="current-file">Currently: ${_escapeHtml(value.toString())}</div>' : '';
+
+    return '<div class="clearable-file-input">$currentValue$fileInput<div class="clear-option">$checkbox $label</div></div>';
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    final json = super.toJson();
+    json['widget'] = 'ClearableFileInput';
+    json['show_clear_checkbox'] = showClearCheckbox;
+    json['clear_checkbox_label'] = clearCheckboxLabel;
+    return json;
+  }
+}
+
+abstract class MultiWidget extends Widget {
+  final List<Widget> widgets;
+
+  const MultiWidget({
+    required this.widgets,
+    super.attributes,
+  });
+
+  @override
+  String render(String name, dynamic value,
+      {Map<String, String> attrs = const {}}) {
+    final values = decompress(value);
+    final renderedWidgets = <String>[];
+
+    for (int i = 0; i < widgets.length; i++) {
+      final widget = widgets[i];
+      final widgetValue = i < values.length ? values[i] : null;
+      final widgetName = '${name}_$i';
+      renderedWidgets.add(widget.render(widgetName, widgetValue, attrs: attrs));
+    }
+
+    return '<div class="multi-widget">${renderedWidgets.join(' ')}</div>';
+  }
+
+  List<dynamic> decompress(dynamic value);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'widget': 'MultiWidget',
+      'widgets': widgets.map((w) => w.toJson()).toList(),
+      'attributes': attributes,
+    };
+  }
+}
+
+class SplitHiddenDateTimeWidget extends MultiWidget {
+  const SplitHiddenDateTimeWidget({super.attributes})
+      : super(
+          widgets: const [
+            DateInput(),
+            HiddenInput(),
+          ],
+        );
+
+  @override
+  String render(String name, dynamic value,
+      {Map<String, String> attrs = const {}}) {
+    DateTime? dateTimeValue;
+    if (value is DateTime) {
+      dateTimeValue = value;
+    } else if (value is String) {
+      dateTimeValue = DateTime.tryParse(value);
+    }
+
+    final dateHtml = widgets[0].render('${name}_date', dateTimeValue, attrs: attrs);
+
+    String? timeValue;
+    if (dateTimeValue != null) {
+      timeValue = '${dateTimeValue.hour.toString().padLeft(2, '0')}:${dateTimeValue.minute.toString().padLeft(2, '0')}';
+    }
+    final timeHtml = widgets[1].render('${name}_time', timeValue, attrs: attrs);
+
+    return '<div class="split-hidden-datetime">$dateHtml$timeHtml</div>';
+  }
+
+  @override
+  List<dynamic> decompress(dynamic value) {
+    if (value is DateTime) {
+      return [value, value];
+    }
+    return [value, null];
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'widget': 'SplitHiddenDateTimeWidget',
+      'attributes': attributes,
+    };
+  }
+}
+
 // Widget utilities
 class WidgetUtils {
   static Widget getDefaultWidget(Type fieldType) {
