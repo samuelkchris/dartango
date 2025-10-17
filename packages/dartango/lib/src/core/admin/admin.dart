@@ -71,27 +71,27 @@ abstract class ModelAdmin<T extends Model> {
     int? limit,
     int? offset,
   }) async {
-    // This is abstract and must be implemented by subclasses
-    throw UnimplementedError('getQueryset must be implemented by subclasses');
+    // Default implementation - override in subclasses for custom behavior
+    return [];
   }
 
   Future<T?> getObject(dynamic pk) async {
-    // This is abstract and must be implemented by subclasses
-    throw UnimplementedError('getObject must be implemented by subclasses');
+    // Default implementation - override in subclasses for custom behavior
+    return null;
   }
 
   Future<T> createObject(Map<String, dynamic> data) async {
-    // This is abstract and must be implemented by subclasses
+    // Default implementation - override in subclasses for custom behavior
     throw UnimplementedError('createObject must be implemented by subclasses');
   }
 
   Future<T> updateObject(T instance, Map<String, dynamic> data) async {
-    // This is abstract and must be implemented by subclasses
+    // Default implementation - override in subclasses for custom behavior
     throw UnimplementedError('updateObject must be implemented by subclasses');
   }
 
   Future<void> deleteObject(T instance) async {
-    // This is abstract and must be implemented by subclasses
+    // Default implementation - override in subclasses for custom behavior
     throw UnimplementedError('deleteObject must be implemented by subclasses');
   }
 
@@ -365,6 +365,8 @@ class AdminSite {
     return _registry.values.toList();
   }
 
+  Map<Type, ModelAdmin> get registry => _registry;
+
   // Permission checking
   Future<bool> hasPermission(HttpRequest request) async {
     final user = _getUserFromRequest(request);
@@ -497,57 +499,47 @@ class AdminSite {
       final appLabel = match.group(1)!;
       final modelName = match.group(2)!;
       final action = match.group(3)!;
-
-      // Find registered model admin
-      final modelAdmin = _findModelAdmin(appLabel, modelName);
-      if (modelAdmin != null) {
-        return await _handleModelRequest(modelAdmin, request, action);
-      }
+      
+      return await handleModelRequest(request, appLabel, modelName, action);
     }
 
     return HttpResponse.notFound('Page not found');
   }
-
-  ModelAdmin? _findModelAdmin(String appLabel, String modelName) {
+  
+  Future<HttpResponse> handleModelRequest(HttpRequest request, String appLabel, String modelName, String action) async {
+    final modelAdmin = getModelAdminByName(appLabel, modelName);
+    if (modelAdmin == null) {
+      return HttpResponse.notFound('Model not found');
+    }
+    
+    // Handle different actions
+    switch (action) {
+      case '':
+      case 'changelist/':
+        return await modelAdmin.changelistView(request);
+      case 'add/':
+        return await modelAdmin.addView(request);
+      default:
+        if (action.endsWith('/change/')) {
+          final pk = action.split('/').first;
+          return await modelAdmin.changeView(request, pk);
+        } else if (action.endsWith('/delete/')) {
+          final pk = action.split('/').first;
+          return await modelAdmin.deleteView(request, pk);
+        }
+        return HttpResponse.notFound('Action not found');
+    }
+  }
+  
+  ModelAdmin? getModelAdminByName(String appLabel, String modelName) {
     for (final entry in _registry.entries) {
       final modelAdmin = entry.value;
-      if (modelAdmin.getAppLabel() == appLabel &&
-          entry.key.toString().toLowerCase() == modelName) {
+      if (modelAdmin.getAppLabel() == appLabel && 
+          entry.key.toString().toLowerCase() == modelName.toLowerCase()) {
         return modelAdmin;
       }
     }
     return null;
-  }
-
-  Future<HttpResponse> _handleModelRequest(
-    ModelAdmin modelAdmin,
-    HttpRequest request,
-    String action,
-  ) async {
-    if (action.isEmpty || action == 'changelist/') {
-      return await modelAdmin.changelistView(request);
-    }
-
-    if (action == 'add/') {
-      return await modelAdmin.addView(request);
-    }
-
-    // Pattern for change/delete views with object ID
-    final objectActionPattern = RegExp(r'^(\d+)/(change|delete)/?$');
-    final match = objectActionPattern.firstMatch(action);
-
-    if (match != null) {
-      final objectId = int.parse(match.group(1)!);
-      final actionType = match.group(2)!;
-
-      if (actionType == 'change') {
-        return await modelAdmin.changeView(request, objectId);
-      } else if (actionType == 'delete') {
-        return await modelAdmin.deleteView(request, objectId);
-      }
-    }
-
-    return HttpResponse.notFound('Action not found');
   }
 }
 

@@ -1,6 +1,0 @@
-# melos_managed_dependency_overrides: dartango,dartango_cli
-dependency_overrides:
-  dartango:
-    path: ../../packages/dartango
-  dartango_cli:
-    path: ../../packages/dartango_cli

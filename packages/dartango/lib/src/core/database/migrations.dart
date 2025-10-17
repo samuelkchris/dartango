@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'connection.dart';
 import 'models.dart';
-import 'fields.dart';
+import 'fields.dart' hide OneToOneField, ManyToManyField;
 import 'relationships.dart';
 
 abstract class Migration {

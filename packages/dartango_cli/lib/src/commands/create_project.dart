@@ -102,7 +102,15 @@ Examples:
       print('Next steps:');
       print('  cd $projectName');
       print('  dart pub get');
-      print('  dartango serve');
+      print('');
+      print('Start the server:');
+      print('  dartango serve                    # Global CLI');
+      print('  dart run manage.dart runserver    # Django-style');
+      print('');
+      print('Other Django-style commands:');
+      print('  dart run manage.dart migrate      # Run migrations');
+      print('  dart run manage.dart createsuperuser  # Create admin user');
+      print('  dart run manage.dart shell        # Interactive shell');
       print('');
       print('Happy coding! 🚀');
     } catch (e) {

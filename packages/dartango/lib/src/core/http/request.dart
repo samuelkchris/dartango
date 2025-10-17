@@ -22,6 +22,11 @@ class HttpRequest {
 
   HttpRequest(this._shelfRequest);
 
+  // Factory constructor for creating HttpRequest from shelf.Request
+  factory HttpRequest.fromShelfRequest(shelf.Request request) {
+    return HttpRequest(request);
+  }
+
   shelf.Request get shelfRequest => _shelfRequest;
 
   String get method => _shelfRequest.method;

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:logging/logging.dart';
 import 'base.dart';
+import '../utils/crypto.dart';
 
 class GlobalSettings {
   static BaseSettings? _instance;
@@ -67,7 +68,7 @@ class GlobalSettings {
       getSetting('DEBUG', 'false').toString().toLowerCase();
   static bool get isDebug => debug == 'true';
 
-  static String get secretKey => getSetting('SECRET_KEY', '');
+  static String get secretKey => getSetting('SECRET_KEY', _getSecureSecretKey());
   static bool get hasSecretKey => secretKey.isNotEmpty;
 
   static List<String> get allowedHosts =>
@@ -307,5 +308,10 @@ class GlobalSettings {
   static void reset() {
     _instance = null;
     _cache.clear();
+  }
+
+  static String _getSecureSecretKey() {
+    // Generate a secure secret key if none is provided
+    return SecureKeyGenerator.generateDjangoSecretKey();
   }
 }

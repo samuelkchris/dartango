@@ -4,7 +4,6 @@ import 'package:path/path.dart' as path;
 
 import '../lib/src/core/static_files/static_files.dart';
 import '../lib/src/core/http/request.dart';
-import '../lib/src/core/http/response.dart';
 import '../lib/src/core/settings/global.dart';
 import '../lib/src/core/settings/base.dart';
 import 'package:shelf/shelf.dart' as shelf;

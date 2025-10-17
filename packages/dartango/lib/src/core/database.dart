@@ -1,6 +1,6 @@
 export 'database/connection.dart';
 export 'database/exceptions.dart';
-export 'database/fields.dart';
+export 'database/fields.dart' hide OneToOneField, ManyToManyField;
 export 'database/managers.dart';
 export 'database/migrations.dart';
 export 'database/models.dart' hide ModelState;

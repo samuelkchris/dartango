@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Dartango Framework CLI
+# Global entry point for Dartango commands
+
+DARTANGO_HOME="${DARTANGO_HOME:-$HOME/.dartango}"
+DARTANGO_CLI="$DARTANGO_HOME/packages/dartango_cli/bin/dartango.dart"
+
+# Check if SDK is installed
+if [ ! -f "$DARTANGO_CLI" ]; then
+    echo "❌ Dartango SDK not found!"
+    echo ""
+    echo "📥 Install Dartango SDK:"
+    echo "curl -fsSL https://raw.githubusercontent.com/dartango/framework/main/install.sh | bash"
+    echo ""
+    echo "📍 Expected location: $DARTANGO_HOME"
+    exit 1
+fi
+
+# Check if Dart is available
+if ! command -v dart &> /dev/null; then
+    echo "❌ Dart SDK not found!"
+    echo "Please install Dart SDK: https://dart.dev/get-dart"
+    exit 1
+fi
+
+# Run the Dartango CLI with all arguments
+exec dart run "$DARTANGO_CLI" "$@"
