@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'backends.dart';
 import 'exceptions.dart';
 import '../utils/crypto.dart';
+import '../database/connection.dart';
+import '../cache/cache.dart';
 
 class Session {
   final SessionBackend _backend;
@@ -149,6 +151,24 @@ class Session {
   Future<void> touch() async {
     await _ensureLoaded();
     _backend.markModified();
+  }
+
+  dynamic operator [](String key) {
+    if (!_loaded) {
+      throw SessionException('Session not loaded. Call get() or ensure session is loaded first.');
+    }
+    return _backend.getValue(key);
+  }
+
+  void operator []=(String key, dynamic value) {
+    if (!_loaded) {
+      throw SessionException('Session not loaded. Call set() or ensure session is loaded first.');
+    }
+    _backend.setValue(key, value);
+  }
+
+  Future<void> regenerateKey() async {
+    await cycleKey();
   }
 }
 

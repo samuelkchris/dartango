@@ -124,6 +124,21 @@ class HttpResponse {
           encoding: encoding ?? utf8,
         );
 
+  HttpResponse.tooManyRequests(
+    Object? body, {
+    Map<String, String>? headers,
+    Encoding? encoding,
+    int? retryAfter,
+  }) : this(
+          body,
+          statusCode: 429,
+          headers: {
+            if (retryAfter != null) 'Retry-After': retryAfter.toString(),
+            ...?headers,
+          },
+          encoding: encoding ?? utf8,
+        );
+
   HttpResponse.json(
     Object? data, {
     int statusCode = 200,
@@ -426,7 +441,7 @@ class HttpResponse {
     return setHeaders(corsHeaders);
   }
 
-  HttpResponse _copyWith({
+  HttpResponse change({
     int? statusCode,
     Map<String, String>? headers,
     Object? body,
@@ -443,6 +458,26 @@ class HttpResponse {
       streaming: streaming ?? this.streaming,
       streamBody: streamBody ?? this.streamBody,
       reasonPhrase: reasonPhrase ?? this.reasonPhrase,
+    );
+  }
+
+  HttpResponse _copyWith({
+    int? statusCode,
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+    bool? streaming,
+    Stream<List<int>>? streamBody,
+    String? reasonPhrase,
+  }) {
+    return change(
+      statusCode: statusCode,
+      headers: headers,
+      body: body,
+      encoding: encoding,
+      streaming: streaming,
+      streamBody: streamBody,
+      reasonPhrase: reasonPhrase,
     );
   }
 

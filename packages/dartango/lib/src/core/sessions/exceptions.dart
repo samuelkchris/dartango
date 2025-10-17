@@ -1,7 +1,11 @@
-import '../database/exceptions.dart';
+class SessionException implements Exception {
+  final String message;
+  final String? code;
 
-class SessionException extends DartangoException {
-  SessionException(super.message, {super.code});
+  SessionException(this.message, {this.code});
+
+  @override
+  String toString() => 'SessionException: $message';
 }
 
 class SessionNotFoundError extends SessionException {
