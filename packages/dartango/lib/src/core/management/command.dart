@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import '../database/connection.dart';
 import '../database/migrations.dart';
-import '../database/models.dart';
+import '../database/models.dart' hide ModelState;
 
 abstract class Command {
   String get name;
@@ -1086,20 +1086,20 @@ class ShowMigrationsCommand extends Command {
 
   Future<void> _showAllMigrations(String format, bool verbosity) async {
     printInfo('All migrations:');
-    
+
     try {
       final connection = await DatabaseRouter.getConnection();
       final recorder = MigrationRecorder(connection);
-      
+
       final allApps = ModelRegistry.getAllApps();
-      
+
       for (final app in allApps) {
         final appliedMigrations = await recorder.getAppliedMigrations(app);
         final availableMigrations = await _getAvailableMigrations(app);
-        
+
         if (availableMigrations.isNotEmpty) {
           print('$app:');
-          
+
           if (format == 'plan') {
             for (final migration in availableMigrations) {
               if (!appliedMigrations.contains(migration)) {
@@ -1119,6 +1119,25 @@ class ShowMigrationsCommand extends Command {
     } catch (e) {
       printError('Error showing migrations: $e');
     }
+  }
+
+  Future<List<String>> _getAvailableMigrations(String app) async {
+    final migrationsDir = Directory('$app/migrations');
+    if (!await migrationsDir.exists()) {
+      return [];
+    }
+
+    final migrations = <String>[];
+    await for (final entity in migrationsDir.list()) {
+      if (entity is File && entity.path.endsWith('.dart')) {
+        final fileName = entity.path.split('/').last;
+        final migrationName = fileName.replaceAll('.dart', '');
+        migrations.add(migrationName);
+      }
+    }
+
+    migrations.sort();
+    return migrations;
   }
 }
 
