@@ -81,18 +81,58 @@ abstract class ModelAdmin<T extends Model> {
   }
 
   Future<T> createObject(Map<String, dynamic> data) async {
-    // Default implementation - override in subclasses for custom behavior
-    throw UnimplementedError('createObject must be implemented by subclasses');
+    final connection = await DatabaseRouter.getConnection();
+    try {
+      final instance = await _createModelInstance(data);
+      await instance.save();
+      return instance;
+    } catch (e) {
+      throw Exception('Failed to create object: $e');
+    } finally {
+      await DatabaseRouter.releaseConnection(connection);
+    }
   }
 
   Future<T> updateObject(T instance, Map<String, dynamic> data) async {
-    // Default implementation - override in subclasses for custom behavior
-    throw UnimplementedError('updateObject must be implemented by subclasses');
+    try {
+      _updateModelFields(instance, data);
+      await instance.save();
+      return instance;
+    } catch (e) {
+      throw Exception('Failed to update object: $e');
+    }
   }
 
   Future<void> deleteObject(T instance) async {
-    // Default implementation - override in subclasses for custom behavior
-    throw UnimplementedError('deleteObject must be implemented by subclasses');
+    try {
+      await instance.delete();
+    } catch (e) {
+      throw Exception('Failed to delete object: $e');
+    }
+  }
+
+  Future<T> _createModelInstance(Map<String, dynamic> data) async {
+    throw UnimplementedError(
+        'Subclasses must override createObject() or _createModelInstance() for model $modelType. '
+        'Implement a factory method that creates an instance from the provided data map.');
+  }
+
+  void _updateModelFields(T instance, Map<String, dynamic> data) {
+    for (final entry in data.entries) {
+      final fieldName = _snakeToCamel(entry.key);
+      try {
+        instance.setField(fieldName, entry.value);
+      } catch (e) {
+        continue;
+      }
+    }
+  }
+
+  String _snakeToCamel(String snakeCase) {
+    final parts = snakeCase.split('_');
+    if (parts.isEmpty) return snakeCase;
+    return parts.first +
+        parts.skip(1).map((part) => part[0].toUpperCase() + part.substring(1)).join();
   }
 
   Future<void> deleteSelected(List<T> objects) async {
