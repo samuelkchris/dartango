@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:postgres/postgres.dart';
+import 'package:mysql1/mysql1.dart' as mysql;
 import 'package:sqlite3/sqlite3.dart';
 
 import 'exceptions.dart';
@@ -501,36 +502,79 @@ class PostgreSQLConnection implements DatabaseConnection {
 
 class MySQLConnection implements DatabaseConnection {
   final DatabaseConfig config;
-  bool _isOpen = false;
+  mysql.MySqlConnection? _connection;
   bool _inTransaction = false;
+  int _transactionDepth = 0;
 
   MySQLConnection(this.config);
 
   Future<void> _connect() async {
-    // MySQL implementation would go here
-    await Future.delayed(Duration(milliseconds: 100));
-    _isOpen = true;
+    try {
+      final settings = mysql.ConnectionSettings(
+        host: config.host,
+        port: config.port,
+        user: config.username,
+        password: config.password,
+        db: config.database,
+        timeout: config.connectionTimeout,
+        useSSL: config.enableSsl,
+        useCompression: true,
+        maxPacketSize: 16777216,
+      );
+
+      _connection = await mysql.MySqlConnection.connect(settings)
+          .timeout(config.connectionTimeout);
+    } catch (e) {
+      throw DatabaseException('Failed to connect to MySQL: $e');
+    }
   }
 
   @override
   Future<QueryResult> execute(String sql, [List<dynamic>? parameters]) async {
-    if (!_isOpen) await _connect();
+    if (!isOpen) await _connect();
 
     try {
-      await Future.delayed(Duration(milliseconds: 10));
+      mysql.Results results;
+
+      if (parameters != null && parameters.isNotEmpty) {
+        results = await _connection!
+            .query(sql, parameters)
+            .timeout(config.queryTimeout);
+      } else {
+        results = await _connection!.query(sql).timeout(config.queryTimeout);
+      }
+
+      final rows = <Map<String, dynamic>>[];
+      final columns = <String>[];
+
+      if (results.fields.isNotEmpty) {
+        columns.addAll(results.fields.map((f) => f.name ?? 'column_${results.fields.indexOf(f)}'));
+
+        for (final row in results) {
+          final rowMap = <String, dynamic>{};
+          for (int i = 0; i < columns.length; i++) {
+            rowMap[columns[i]] = row[i];
+          }
+          rows.add(rowMap);
+        }
+      }
+
       return QueryResult(
-        affectedRows: 1,
-        insertId: 1,
-        columns: ['id', 'name'],
-        rows: [
-          {'id': 1, 'name': 'test'}
-        ],
+        affectedRows: results.affectedRows ?? 0,
+        insertId: results.insertId,
+        columns: columns,
+        rows: rows,
       );
     } catch (e) {
-      if (config.autoReconnect && !_isOpen) {
+      if (e is TimeoutException) {
+        rethrow;
+      }
+
+      if (config.autoReconnect && !isOpen) {
         await _reconnect();
         return execute(sql, parameters);
       }
+
       throw DatabaseException('Query execution failed: $e');
     }
   }
@@ -562,93 +606,178 @@ class MySQLConnection implements DatabaseConnection {
 
   @override
   Future<void> beginTransaction() async {
-    if (!_isOpen) await _connect();
-    _inTransaction = true;
+    if (!isOpen) await _connect();
+
+    if (_transactionDepth == 0) {
+      await _connection!.query('START TRANSACTION');
+      _inTransaction = true;
+    }
+    _transactionDepth++;
   }
 
   @override
   Future<void> commitTransaction() async {
-    if (_inTransaction) {
-      _inTransaction = false;
+    if (!_inTransaction) return;
+
+    _transactionDepth--;
+    if (_transactionDepth == 0) {
+      try {
+        await _connection!.query('COMMIT');
+      } finally {
+        _inTransaction = false;
+      }
     }
   }
 
   @override
   Future<void> rollbackTransaction() async {
-    if (_inTransaction) {
+    if (!_inTransaction) return;
+
+    try {
+      await _connection!.query('ROLLBACK');
+    } finally {
       _inTransaction = false;
+      _transactionDepth = 0;
     }
   }
 
   @override
   Future<void> setSavepoint(String name) async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    await _connection!.query('SAVEPOINT $name');
   }
 
   @override
   Future<void> releaseSavepoint(String name) async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    await _connection!.query('RELEASE SAVEPOINT $name');
   }
 
   @override
   Future<void> rollbackToSavepoint(String name) async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    await _connection!.query('ROLLBACK TO SAVEPOINT $name');
   }
 
   @override
   Future<void> ping() async {
-    await Future.delayed(Duration(milliseconds: 1));
+    if (!isOpen) await _connect();
+    await _connection!.query('SELECT 1');
   }
 
   @override
   Future<Map<String, dynamic>> getServerInfo() async {
-    return {'version': 'MySQL 8.0'};
+    if (!isOpen) await _connect();
+
+    final versionResult = await _connection!.query('SELECT VERSION() as version');
+    final protocolResult = await _connection!.query('SELECT @@protocol_version as protocol');
+
+    final version = versionResult.first['version'] as String;
+    final protocol = protocolResult.first['protocol'];
+
+    return {
+      'version': 'MySQL $version',
+      'protocol_version': protocol,
+    };
   }
 
   @override
   Future<List<String>> getTableNames() async {
-    return ['users', 'posts', 'comments'];
+    if (!isOpen) await _connect();
+
+    final results = await _connection!.query(
+      'SELECT table_name FROM information_schema.tables WHERE table_schema = ?',
+      [config.database],
+    );
+
+    return results.map((row) => row['table_name'] as String).toList();
   }
 
   @override
   Future<List<Map<String, dynamic>>> getTableSchema(String tableName) async {
-    return [
-      {
-        'Field': 'id',
-        'Type': 'int(11)',
-        'Null': 'NO',
-        'Key': 'PRI',
-        'Default': null,
-        'Extra': 'auto_increment'
-      },
-      {
-        'Field': 'name',
-        'Type': 'varchar(255)',
-        'Null': 'YES',
-        'Key': '',
-        'Default': null,
-        'Extra': ''
-      },
-    ];
+    if (!isOpen) await _connect();
+
+    final results = await _connection!.query(
+      '''
+      SELECT
+        column_name,
+        data_type,
+        is_nullable,
+        column_default,
+        column_key,
+        extra,
+        character_maximum_length,
+        numeric_precision,
+        numeric_scale
+      FROM information_schema.columns
+      WHERE table_schema = ? AND table_name = ?
+      ORDER BY ordinal_position
+      ''',
+      [config.database, tableName],
+    );
+
+    return results
+        .map((row) => {
+              'column_name': row['column_name'],
+              'data_type': row['data_type'],
+              'is_nullable': row['is_nullable'],
+              'column_default': row['column_default'],
+              'column_key': row['column_key'],
+              'extra': row['extra'],
+              'character_maximum_length': row['character_maximum_length'],
+              'numeric_precision': row['numeric_precision'],
+              'numeric_scale': row['numeric_scale'],
+            })
+        .toList();
   }
 
   @override
   Future<List<Map<String, dynamic>>> getIndexes(String tableName) async {
-    return [
-      {
-        'Table': tableName,
-        'Non_unique': 0,
-        'Key_name': 'PRIMARY',
-        'Seq_in_index': 1,
-        'Column_name': 'id'
-      },
-    ];
+    if (!isOpen) await _connect();
+
+    final results = await _connection!.query(
+      '''
+      SELECT
+        table_name,
+        non_unique,
+        index_name as key_name,
+        seq_in_index,
+        column_name,
+        collation,
+        cardinality,
+        index_type
+      FROM information_schema.statistics
+      WHERE table_schema = ? AND table_name = ?
+      ORDER BY index_name, seq_in_index
+      ''',
+      [config.database, tableName],
+    );
+
+    return results
+        .map((row) => {
+              'table_name': row['table_name'],
+              'non_unique': row['non_unique'],
+              'key_name': row['key_name'],
+              'seq_in_index': row['seq_in_index'],
+              'column_name': row['column_name'],
+              'collation': row['collation'],
+              'cardinality': row['cardinality'],
+              'index_type': row['index_type'],
+            })
+        .toList();
   }
 
   @override
   Future<void> close() async {
-    if (_isOpen) {
-      _isOpen = false;
+    if (_connection != null) {
+      try {
+        await _connection!.close();
+      } catch (e) {
+      } finally {
+        _connection = null;
+        _inTransaction = false;
+        _transactionDepth = 0;
+      }
     }
   }
 
@@ -658,7 +787,7 @@ class MySQLConnection implements DatabaseConnection {
   }
 
   @override
-  bool get isOpen => _isOpen;
+  bool get isOpen => _connection != null;
 
   @override
   String get databaseName => config.database;
