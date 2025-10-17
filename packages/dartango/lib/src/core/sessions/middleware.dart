@@ -1,21 +1,18 @@
 import 'dart:async';
-import 'dart:convert';
+import 'dart:math';
 
 import 'package:shelf/shelf.dart';
 
-import '../middleware/middleware.dart';
-import '../utils/crypto.dart';
-import 'backends.dart';
-import 'session.dart';
+import 'backends.dart' show SessionConfiguration;
+import 'session.dart' show Session, SessionManager, SessionUtils;
 import 'exceptions.dart';
 
-class SessionMiddleware extends DartangoMiddleware {
+class SessionMiddleware {
   final SessionManager _sessionManager;
   final SessionConfiguration _config;
   
   SessionMiddleware(this._sessionManager, this._config);
-  
-  @override
+
   Handler call(Handler innerHandler) {
     return (Request request) async {
       Session? session;
@@ -107,12 +104,12 @@ extension SessionRequestExtension on Request {
   bool get hasSession => context.containsKey('session');
 }
 
-class CsrfMiddleware extends DartangoMiddleware {
+class CsrfMiddleware {
   final Set<String> _safeMethods = {'GET', 'HEAD', 'OPTIONS', 'TRACE'};
   final String _csrfHeaderName;
   final String _csrfFormFieldName;
   final bool _requireHttps;
-  
+
   CsrfMiddleware({
     String csrfHeaderName = 'X-CSRFToken',
     String csrfFormFieldName = 'csrfmiddlewaretoken',
@@ -120,8 +117,7 @@ class CsrfMiddleware extends DartangoMiddleware {
   }) : _csrfHeaderName = csrfHeaderName,
        _csrfFormFieldName = csrfFormFieldName,
        _requireHttps = requireHttps;
-  
-  @override
+
   Handler call(Handler innerHandler) {
     return (Request request) async {
       if (_requireHttps && !_isHttps(request)) {
@@ -202,12 +198,12 @@ extension CsrfRequestExtension on Request {
   bool get hasCsrfToken => context.containsKey('csrf_token');
 }
 
-class SessionSecurityMiddleware extends DartangoMiddleware {
+class SessionSecurityMiddleware {
   final Duration _sessionTimeout;
   final bool _renewOnActivity;
   final bool _rotateOnLogin;
   final int _maxSessionsPerUser;
-  
+
   SessionSecurityMiddleware({
     Duration sessionTimeout = const Duration(hours: 2),
     bool renewOnActivity = true,
@@ -217,8 +213,7 @@ class SessionSecurityMiddleware extends DartangoMiddleware {
        _renewOnActivity = renewOnActivity,
        _rotateOnLogin = rotateOnLogin,
        _maxSessionsPerUser = maxSessionsPerUser;
-  
-  @override
+
   Handler call(Handler innerHandler) {
     return (Request request) async {
       if (!request.hasSession) {
@@ -255,18 +250,17 @@ class SessionSecurityMiddleware extends DartangoMiddleware {
   }
 }
 
-class SessionCleanupMiddleware extends DartangoMiddleware {
+class SessionCleanupMiddleware {
   final Duration _cleanupInterval;
   final double _cleanupProbability;
   DateTime _lastCleanup = DateTime.now();
-  
+
   SessionCleanupMiddleware({
     Duration cleanupInterval = const Duration(hours: 1),
     double cleanupProbability = 0.01,
   }) : _cleanupInterval = cleanupInterval,
        _cleanupProbability = cleanupProbability;
-  
-  @override
+
   Handler call(Handler innerHandler) {
     return (Request request) async {
       _maybeCleanupSessions();
@@ -277,8 +271,8 @@ class SessionCleanupMiddleware extends DartangoMiddleware {
   void _maybeCleanupSessions() {
     final now = DateTime.now();
     final shouldCleanup = now.difference(_lastCleanup) >= _cleanupInterval;
-    final randomCleanup = CryptoUtils.generateRandomDouble() < _cleanupProbability;
-    
+    final randomCleanup = Random.secure().nextDouble() < _cleanupProbability;
+
     if (shouldCleanup || randomCleanup) {
       _performCleanup();
       _lastCleanup = now;
@@ -294,131 +288,29 @@ class SessionCleanupMiddleware extends DartangoMiddleware {
   }
 }
 
-class SessionConfiguration {
-  final String engine;
-  final Duration cookieAge;
-  final String? cookieDomain;
-  final String cookiePath;
-  final bool cookieSecure;
-  final bool cookieHttpOnly;
-  final String? cookieSameSite;
-  final String cookieName;
-  final bool saveEveryRequest;
-  final bool expireAtBrowserClose;
-  final Map<String, dynamic> engineOptions;
-  final bool csrfProtectionEnabled;
-  final bool sessionSecurityEnabled;
-  final bool sessionCleanupEnabled;
-  
-  const SessionConfiguration({
-    this.engine = 'database',
-    this.cookieAge = const Duration(days: 14),
-    this.cookieDomain,
-    this.cookiePath = '/',
-    this.cookieSecure = false,
-    this.cookieHttpOnly = true,
-    this.cookieSameSite,
-    this.cookieName = 'sessionid',
-    this.saveEveryRequest = false,
-    this.expireAtBrowserClose = false,
-    this.engineOptions = const {},
-    this.csrfProtectionEnabled = true,
-    this.sessionSecurityEnabled = true,
-    this.sessionCleanupEnabled = true,
-  });
-  
-  SessionConfiguration copyWith({
-    String? engine,
-    Duration? cookieAge,
-    String? cookieDomain,
-    String? cookiePath,
-    bool? cookieSecure,
-    bool? cookieHttpOnly,
-    String? cookieSameSite,
-    String? cookieName,
-    bool? saveEveryRequest,
-    bool? expireAtBrowserClose,
-    Map<String, dynamic>? engineOptions,
-    bool? csrfProtectionEnabled,
-    bool? sessionSecurityEnabled,
-    bool? sessionCleanupEnabled,
-  }) {
-    return SessionConfiguration(
-      engine: engine ?? this.engine,
-      cookieAge: cookieAge ?? this.cookieAge,
-      cookieDomain: cookieDomain ?? this.cookieDomain,
-      cookiePath: cookiePath ?? this.cookiePath,
-      cookieSecure: cookieSecure ?? this.cookieSecure,
-      cookieHttpOnly: cookieHttpOnly ?? this.cookieHttpOnly,
-      cookieSameSite: cookieSameSite ?? this.cookieSameSite,
-      cookieName: cookieName ?? this.cookieName,
-      saveEveryRequest: saveEveryRequest ?? this.saveEveryRequest,
-      expireAtBrowserClose: expireAtBrowserClose ?? this.expireAtBrowserClose,
-      engineOptions: engineOptions ?? this.engineOptions,
-      csrfProtectionEnabled: csrfProtectionEnabled ?? this.csrfProtectionEnabled,
-      sessionSecurityEnabled: sessionSecurityEnabled ?? this.sessionSecurityEnabled,
-      sessionCleanupEnabled: sessionCleanupEnabled ?? this.sessionCleanupEnabled,
-    );
-  }
-}
-
 class SessionMiddlewareBuilder {
-  SessionConfiguration _config = const SessionConfiguration();
-  
-  SessionMiddlewareBuilder withConfiguration(SessionConfiguration config) {
-    _config = config;
-    return this;
-  }
-  
-  SessionMiddlewareBuilder withEngine(String engine) {
-    _config = _config.copyWith(engine: engine);
-    return this;
-  }
-  
-  SessionMiddlewareBuilder withCookieAge(Duration age) {
-    _config = _config.copyWith(cookieAge: age);
-    return this;
-  }
-  
-  SessionMiddlewareBuilder withCookieName(String name) {
-    _config = _config.copyWith(cookieName: name);
-    return this;
-  }
-  
-  SessionMiddlewareBuilder withCookieSecure(bool secure) {
-    _config = _config.copyWith(cookieSecure: secure);
-    return this;
-  }
-  
-  SessionMiddlewareBuilder withCsrfProtection(bool enabled) {
-    _config = _config.copyWith(csrfProtectionEnabled: enabled);
-    return this;
-  }
-  
-  SessionMiddlewareBuilder withEngineOptions(Map<String, dynamic> options) {
-    _config = _config.copyWith(engineOptions: options);
-    return this;
-  }
-  
+  SessionConfiguration config;
+
+  SessionMiddlewareBuilder({SessionConfiguration? config})
+      : config = config ?? SessionConfiguration();
+
   Handler build(Handler innerHandler) {
-    final sessionManager = SessionManager(_config);
-    
+    final sessionManager = SessionManager(config);
+
     Handler handler = innerHandler;
-    
-    if (_config.sessionCleanupEnabled) {
-      handler = SessionCleanupMiddleware().call(handler);
-    }
-    
-    if (_config.sessionSecurityEnabled) {
-      handler = SessionSecurityMiddleware().call(handler);
-    }
-    
-    if (_config.csrfProtectionEnabled) {
-      handler = CsrfMiddleware().call(handler);
-    }
-    
-    handler = SessionMiddleware(sessionManager, _config).call(handler);
-    
+
+    // Add cleanup middleware
+    handler = SessionCleanupMiddleware().call(handler);
+
+    // Add security middleware
+    handler = SessionSecurityMiddleware().call(handler);
+
+    // Add CSRF middleware
+    handler = CsrfMiddleware().call(handler);
+
+    // Add session middleware (must be last)
+    handler = SessionMiddleware(sessionManager, config).call(handler);
+
     return handler;
   }
 }
