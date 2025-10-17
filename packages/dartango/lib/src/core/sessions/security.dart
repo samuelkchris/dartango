@@ -141,10 +141,7 @@ class SessionSecurityMiddleware extends BaseMiddleware {
   }
   
   String _getClientIp(HttpRequest request) {
-    return request.headers['x-forwarded-for']?.split(',').first.trim() ??
-           request.headers['x-real-ip'] ??
-           request.connectionInfo?.remoteAddress.address ??
-           'unknown';
+    return request.remoteAddr;
   }
   
   bool _isLockedOut(String clientIp) {
@@ -277,11 +274,11 @@ class SessionSecurityMiddleware extends BaseMiddleware {
   
   void _logSecurityEvent(String eventType, HttpRequest? request, String description) {
     if (!settings.logSecurityEvents) return;
-    
+
     final timestamp = DateTime.now().toIso8601String();
-    final clientIp = request != null ? _getClientIp(request) : 'unknown';
+    final clientIp = request?.remoteAddr ?? 'unknown';
     final userAgent = request?.headers['user-agent'] ?? 'unknown';
-    
+
     print('[$timestamp] SECURITY_EVENT: $eventType - $description (IP: $clientIp, UA: $userAgent)');
   }
 }
@@ -386,13 +383,10 @@ class CsrfSecurityMiddleware extends BaseMiddleware {
   
   void _logSecurityEvent(String eventType, HttpRequest request) {
     if (!settings.logSecurityEvents) return;
-    
+
     final timestamp = DateTime.now().toIso8601String();
-    final clientIp = request.headers['x-forwarded-for']?.split(',').first.trim() ??
-                     request.headers['x-real-ip'] ??
-                     request.connectionInfo?.remoteAddress.address ??
-                     'unknown';
-    
+    final clientIp = request.remoteAddr;
+
     print('[$timestamp] CSRF_EVENT: $eventType (IP: $clientIp, Path: ${request.uri.path})');
   }
 }
@@ -423,9 +417,7 @@ class SessionAnomalyDetector {
     return SessionBehaviorMetrics(
       timestamp: DateTime.now(),
       userAgent: request.headers['user-agent'] ?? '',
-      ipAddress: request.headers['x-forwarded-for']?.split(',').first.trim() ??
-                 request.headers['x-real-ip'] ??
-                 'unknown',
+      ipAddress: request.remoteAddr,
       requestPath: request.uri.path,
       requestMethod: request.method,
       referrer: request.headers['referer'] ?? '',
@@ -529,14 +521,11 @@ class SessionSecurityManager {
       request.headers['accept-language'] ?? '',
       request.headers['accept-encoding'] ?? '',
     ];
-    
+
     if (settings.enableIpBinding) {
-      final ip = request.headers['x-forwarded-for']?.split(',').first.trim() ??
-                 request.headers['x-real-ip'] ??
-                 'unknown';
-      components.add(ip);
+      components.add(request.remoteAddr);
     }
-    
+
     return SecureKeyGenerator.secureHash(components.join('|'));
   }
   

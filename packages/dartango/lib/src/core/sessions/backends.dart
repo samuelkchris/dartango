@@ -306,12 +306,12 @@ class CacheSessionBackend extends SessionBackend {
   @override
   Future<void> save() async {
     if (!modified) return;
-    
+
     final cacheKey = '$keyPrefix:$sessionKey';
     final sessionData = encodeSession();
     final timeout = cookieAge ?? const Duration(days: 14);
-    
-    await cache.set(cacheKey, sessionData, timeout);
+
+    await cache.set(cacheKey, sessionData, timeout: timeout);
   }
 
   @override
