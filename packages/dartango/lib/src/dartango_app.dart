@@ -358,7 +358,9 @@ abstract class DartangoApp {
   }
 
   Future<Response> _webSocketHandler(Request request) async {
-    return Response.ok('WebSocket support coming soon');
+    final httpRequest = HttpRequest(request);
+    final httpResponse = await _webSocketServer.handleUpgrade(httpRequest);
+    return _convertHttpResponse(httpResponse);
   }
 
   // HTML admin handlers removed - pure Flutter admin only
