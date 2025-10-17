@@ -128,9 +128,11 @@ abstract class Model {
         final field = mirror.getField(declaration.simpleName).reflectee;
 
         if (field is Field) {
-          _fields[fieldName] = field;
-          if (_fieldValues[fieldName] == null && field.defaultValue != null) {
-            _fieldValues[fieldName] = field.defaultValue;
+          // Use columnName if provided, otherwise use fieldName
+          final columnName = field.columnName ?? fieldName;
+          _fields[columnName] = field;
+          if (_fieldValues[columnName] == null && field.defaultValue != null) {
+            _fieldValues[columnName] = field.defaultValue;
           }
         }
       }
@@ -227,6 +229,11 @@ abstract class Model {
       final field = entry.value;
       final value = _fieldValues[fieldName];
 
+      // Skip primary key validation for new records (they're auto-generated)
+      if (field.primaryKey && value == null && isNew) {
+        continue;
+      }
+
       try {
         field.validate(value);
       } catch (e) {
@@ -250,7 +257,11 @@ abstract class Model {
       final field = entry.value;
       final value = _fieldValues[fieldName];
 
+      // Skip primary key null validation for new records (they're auto-generated)
       if (value == null && !field.allowNull && field.defaultValue == null) {
+        if (field.primaryKey && isNew) {
+          continue;
+        }
         throw ValidationException('Field $fieldName cannot be null',
             fieldName: fieldName);
       }
@@ -378,7 +389,13 @@ abstract class Model {
       for (final entry in _fieldValues.entries) {
         final field = _fields[entry.key];
         if (field != null && !field.primaryKey) {
-          insertData[entry.key] = entry.value;
+          // Convert field value to appropriate format for SQL parameters
+          final value = entry.value;
+          if (value is DateTime) {
+            insertData[entry.key] = value.toIso8601String();
+          } else {
+            insertData[entry.key] = value;
+          }
         }
       }
 
@@ -403,7 +420,13 @@ abstract class Model {
       for (final fieldName in fieldsToUpdate) {
         final field = _fields[fieldName];
         if (field != null && !field.primaryKey) {
-          updateData[fieldName] = _fieldValues[fieldName];
+          // Convert field value to appropriate format for SQL parameters
+          final value = _fieldValues[fieldName];
+          if (value is DateTime) {
+            updateData[fieldName] = value.toIso8601String();
+          } else {
+            updateData[fieldName] = value;
+          }
         }
       }
 
@@ -835,10 +858,17 @@ class ProxyModel extends Model {
 class ModelRegistry {
   static final Map<Type, ModelMeta> _registry = {};
   static final Map<String, Type> _tableToModel = {};
+  static final Map<String, Set<Type>> _appToModels = {};
 
   static void register(Type modelType, ModelMeta meta) {
     _registry[modelType] = meta;
     _tableToModel[meta.effectiveTableName] = modelType;
+    
+    // Register model with its app
+    final appLabel = meta.appLabel;
+    if (appLabel != null) {
+      _appToModels.putIfAbsent(appLabel, () => <Type>{}).add(modelType);
+    }
   }
 
   static ModelMeta? getMeta(Type modelType) {
@@ -853,6 +883,14 @@ class ModelRegistry {
     return _registry.keys.toList();
   }
 
+  static List<String> getAllApps() {
+    return _appToModels.keys.toList();
+  }
+
+  static List<Type> getModelsForApp(String appLabel) {
+    return _appToModels[appLabel]?.toList() ?? [];
+  }
+
   static Map<Type, ModelMeta> getAllRegistry() {
     return Map.unmodifiable(_registry);
   }
@@ -860,6 +898,7 @@ class ModelRegistry {
   static void clear() {
     _registry.clear();
     _tableToModel.clear();
+    _appToModels.clear();
   }
 }
 

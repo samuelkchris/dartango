@@ -1070,3 +1070,489 @@ class UUIDField extends Field<String> {
     return uuidRegex.hasMatch(value);
   }
 }
+
+/// Relationship fields
+abstract class RelationshipField<T> extends Field<T> {
+  final Type relatedModel;
+  final String? relatedName;
+  final String? relatedQueryName;
+  final bool symmetrical;
+  final String? throughModel;
+  final String? throughFields;
+  final String? dbConstraint;
+  final String onDelete;
+  final String onUpdate;
+  final String? dbColumn;
+  final String? dbTablespace;
+  final String? dbIndex;
+  final String? toField;
+  final String? limitChoicesTo;
+  final String? swappable;
+
+  const RelationshipField({
+    this.relatedModel = Object,
+    this.relatedName,
+    this.relatedQueryName,
+    this.symmetrical = true,
+    this.throughModel,
+    this.throughFields,
+    this.dbConstraint,
+    this.onDelete = 'CASCADE',
+    this.onUpdate = 'CASCADE',
+    this.dbColumn,
+    this.dbTablespace,
+    this.dbIndex,
+    this.toField,
+    this.limitChoicesTo,
+    this.swappable,
+    String? columnName,
+    T? defaultValue,
+    bool allowNull = false,
+    bool primaryKey = false,
+    bool unique = false,
+    bool indexed = false,
+    String? helpText,
+    List<Validator<T>> validators = const [],
+    Map<String, dynamic> choices = const {},
+    bool editable = true,
+    bool blank = false,
+  }) : super(
+          columnName: columnName,
+          defaultValue: defaultValue,
+          allowNull: allowNull,
+          primaryKey: primaryKey,
+          unique: unique,
+          indexed: indexed,
+          helpText: helpText,
+          validators: validators,
+          choices: choices,
+          editable: editable,
+          blank: blank,
+        );
+
+  String get relatedModelName => relatedModel.toString();
+  String get foreignKeyColumn => dbColumn ?? '${relatedModelName.toLowerCase()}_id';
+}
+
+/// Foreign key field for many-to-one relationships
+class ForeignKeyField<T> extends RelationshipField<T> {
+  const ForeignKeyField({
+    required Type relatedModel,
+    String? relatedName,
+    String? relatedQueryName,
+    String? throughModel,
+    String? throughFields,
+    String? dbConstraint,
+    String onDelete = 'CASCADE',
+    String onUpdate = 'CASCADE',
+    String? dbColumn,
+    String? dbTablespace,
+    String? dbIndex,
+    String? toField,
+    String? limitChoicesTo,
+    String? swappable,
+    String? columnName,
+    T? defaultValue,
+    bool allowNull = false,
+    bool primaryKey = false,
+    bool unique = false,
+    bool indexed = true,
+    String? helpText,
+    List<Validator<T>> validators = const [],
+    Map<String, dynamic> choices = const {},
+    bool editable = true,
+    bool blank = false,
+  }) : super(
+          relatedModel: relatedModel,
+          relatedName: relatedName,
+          relatedQueryName: relatedQueryName,
+          throughModel: throughModel,
+          throughFields: throughFields,
+          dbConstraint: dbConstraint,
+          onDelete: onDelete,
+          onUpdate: onUpdate,
+          dbColumn: dbColumn,
+          dbTablespace: dbTablespace,
+          dbIndex: dbIndex,
+          toField: toField,
+          limitChoicesTo: limitChoicesTo,
+          swappable: swappable,
+          columnName: columnName,
+          defaultValue: defaultValue,
+          allowNull: allowNull,
+          primaryKey: primaryKey,
+          unique: unique,
+          indexed: indexed,
+          helpText: helpText,
+          validators: validators,
+          choices: choices,
+          editable: editable,
+          blank: blank,
+        );
+
+  @override
+  String get sqlType => 'INTEGER';
+
+  @override
+  String get dartType => relatedModel.toString();
+
+  @override
+  T? clean(dynamic value) {
+    if (value == null) return null;
+    if (value is T) return value;
+    if (value is int) return value as T;
+    if (value is String) {
+      final intValue = int.tryParse(value);
+      if (intValue != null) return intValue as T;
+    }
+    throw ValidationException('Invalid foreign key value: $value');
+  }
+
+  @override
+  void validate(T? value) {
+    if (value == null && !allowNull) {
+      throw ValidationException('This field cannot be null');
+    }
+
+    for (final validator in validators) {
+      validator.validate(value);
+    }
+  }
+
+  @override
+  String toSqlValue(T? value) {
+    if (value == null) return 'NULL';
+    if (value is int) return value.toString();
+    return value.toString();
+  }
+
+  @override
+  T? fromSqlValue(dynamic value) {
+    if (value == null) return null;
+    if (value is T) return value;
+    if (value is int) return value as T;
+    if (value is String) {
+      final intValue = int.tryParse(value);
+      if (intValue != null) return intValue as T;
+    }
+    return null;
+  }
+
+  @override
+  String generateSqlDefinition(String columnName) {
+    final buffer = StringBuffer();
+    buffer.write('$columnName $sqlType');
+
+    if (primaryKey) {
+      buffer.write(' PRIMARY KEY');
+    }
+
+    if (!allowNull && !primaryKey) {
+      buffer.write(' NOT NULL');
+    }
+
+    if (unique && !primaryKey) {
+      buffer.write(' UNIQUE');
+    }
+
+    if (defaultValue != null) {
+      buffer.write(' DEFAULT ${toSqlValue(defaultValue)}');
+    }
+
+    if (dbConstraint != null) {
+      buffer.write(' REFERENCES ${relatedModelName.toLowerCase()}s(${toField ?? 'id'})');
+      buffer.write(' ON DELETE $onDelete');
+      buffer.write(' ON UPDATE $onUpdate');
+    }
+
+    return buffer.toString();
+  }
+}
+
+/// One-to-one relationship field
+class OneToOneField<T> extends RelationshipField<T> {
+  const OneToOneField({
+    required Type relatedModel,
+    String? relatedName,
+    String? relatedQueryName,
+    String? throughModel,
+    String? throughFields,
+    String? dbConstraint,
+    String onDelete = 'CASCADE',
+    String onUpdate = 'CASCADE',
+    String? dbColumn,
+    String? dbTablespace,
+    String? dbIndex,
+    String? toField,
+    String? limitChoicesTo,
+    String? swappable,
+    String? columnName,
+    T? defaultValue,
+    bool allowNull = false,
+    bool primaryKey = false,
+    bool unique = true,
+    bool indexed = true,
+    String? helpText,
+    List<Validator<T>> validators = const [],
+    Map<String, dynamic> choices = const {},
+    bool editable = true,
+    bool blank = false,
+  }) : super(
+          relatedModel: relatedModel,
+          relatedName: relatedName,
+          relatedQueryName: relatedQueryName,
+          throughModel: throughModel,
+          throughFields: throughFields,
+          dbConstraint: dbConstraint,
+          onDelete: onDelete,
+          onUpdate: onUpdate,
+          dbColumn: dbColumn,
+          dbTablespace: dbTablespace,
+          dbIndex: dbIndex,
+          toField: toField,
+          limitChoicesTo: limitChoicesTo,
+          swappable: swappable,
+          columnName: columnName,
+          defaultValue: defaultValue,
+          allowNull: allowNull,
+          primaryKey: primaryKey,
+          unique: unique,
+          indexed: indexed,
+          helpText: helpText,
+          validators: validators,
+          choices: choices,
+          editable: editable,
+          blank: blank,
+        );
+
+  @override
+  String get sqlType => 'INTEGER';
+
+  @override
+  String get dartType => relatedModel.toString();
+
+  @override
+  T? clean(dynamic value) {
+    if (value == null) return null;
+    if (value is T) return value;
+    if (value is int) return value as T;
+    if (value is String) {
+      final intValue = int.tryParse(value);
+      if (intValue != null) return intValue as T;
+    }
+    throw ValidationException('Invalid one-to-one value: $value');
+  }
+
+  @override
+  void validate(T? value) {
+    if (value == null && !allowNull) {
+      throw ValidationException('This field cannot be null');
+    }
+
+    for (final validator in validators) {
+      validator.validate(value);
+    }
+  }
+
+  @override
+  String toSqlValue(T? value) {
+    if (value == null) return 'NULL';
+    if (value is int) return value.toString();
+    return value.toString();
+  }
+
+  @override
+  T? fromSqlValue(dynamic value) {
+    if (value == null) return null;
+    if (value is T) return value;
+    if (value is int) return value as T;
+    if (value is String) {
+      final intValue = int.tryParse(value);
+      if (intValue != null) return intValue as T;
+    }
+    return null;
+  }
+
+  @override
+  String generateSqlDefinition(String columnName) {
+    final buffer = StringBuffer();
+    buffer.write('$columnName $sqlType');
+
+    if (primaryKey) {
+      buffer.write(' PRIMARY KEY');
+    }
+
+    if (!allowNull && !primaryKey) {
+      buffer.write(' NOT NULL');
+    }
+
+    if (unique && !primaryKey) {
+      buffer.write(' UNIQUE');
+    }
+
+    if (defaultValue != null) {
+      buffer.write(' DEFAULT ${toSqlValue(defaultValue)}');
+    }
+
+    if (dbConstraint != null) {
+      buffer.write(' REFERENCES ${relatedModelName.toLowerCase()}s(${toField ?? 'id'})');
+      buffer.write(' ON DELETE $onDelete');
+      buffer.write(' ON UPDATE $onUpdate');
+    }
+
+    return buffer.toString();
+  }
+}
+
+/// Many-to-many relationship field
+class ManyToManyField<T> extends RelationshipField<List<T>> {
+  final String? dbTable;
+  final String? dbTablespace;
+  final bool symmetrical;
+  final String? through;
+  final String? throughFields;
+  final String? throughTable;
+  final String? throughTablespace;
+  final String? throughConstraint;
+  final String? throughQueryName;
+  final String? throughRelatedName;
+  final String? throughOnDelete;
+  final String? throughOnUpdate;
+  final String? throughDbColumn;
+  final String? throughDbTablespace;
+  final String? throughDbIndex;
+  final String? throughToField;
+  final String? throughLimitChoicesTo;
+  final String? throughSwappable;
+
+  const ManyToManyField({
+    required Type relatedModel,
+    String? relatedName,
+    String? relatedQueryName,
+    String? throughModel,
+    String? dbConstraint,
+    String onDelete = 'CASCADE',
+    String onUpdate = 'CASCADE',
+    String? dbColumn,
+    String? dbIndex,
+    String? toField,
+    String? limitChoicesTo,
+    String? swappable,
+    this.dbTable,
+    this.dbTablespace,
+    this.symmetrical = true,
+    this.through,
+    this.throughFields,
+    this.throughTable,
+    this.throughTablespace,
+    this.throughConstraint,
+    this.throughQueryName,
+    this.throughRelatedName,
+    this.throughOnDelete,
+    this.throughOnUpdate,
+    this.throughDbColumn,
+    this.throughDbTablespace,
+    this.throughDbIndex,
+    this.throughToField,
+    this.throughLimitChoicesTo,
+    this.throughSwappable,
+    String? columnName,
+    List<T>? defaultValue,
+    bool allowNull = false,
+    bool primaryKey = false,
+    bool unique = false,
+    bool indexed = false,
+    String? helpText,
+    List<Validator<List<T>>> validators = const [],
+    Map<String, dynamic> choices = const {},
+    bool editable = true,
+    bool blank = false,
+  }) : super(
+          relatedModel: relatedModel,
+          relatedName: relatedName,
+          relatedQueryName: relatedQueryName,
+          throughModel: throughModel,
+          throughFields: throughFields,
+          dbConstraint: dbConstraint,
+          onDelete: onDelete,
+          onUpdate: onUpdate,
+          dbColumn: dbColumn,
+          dbTablespace: dbTablespace,
+          dbIndex: dbIndex,
+          toField: toField,
+          limitChoicesTo: limitChoicesTo,
+          swappable: swappable,
+          columnName: columnName,
+          defaultValue: defaultValue,
+          allowNull: allowNull,
+          primaryKey: primaryKey,
+          unique: unique,
+          indexed: indexed,
+          helpText: helpText,
+          validators: validators,
+          choices: choices,
+          editable: editable,
+          blank: blank,
+        );
+
+  @override
+  String get sqlType => 'TEXT';
+
+  @override
+  String get dartType => 'List<${relatedModel.toString()}>';
+
+  @override
+  List<T>? clean(dynamic value) {
+    if (value == null) return null;
+    if (value is List<T>) return value;
+    if (value is List) return value.cast<T>();
+    throw ValidationException('Invalid many-to-many value: $value');
+  }
+
+  @override
+  void validate(List<T>? value) {
+    if (value == null && !allowNull) {
+      throw ValidationException('This field cannot be null');
+    }
+
+    for (final validator in validators) {
+      validator.validate(value);
+    }
+  }
+
+  @override
+  String toSqlValue(List<T>? value) {
+    if (value == null) return 'NULL';
+    return "'${value.join(',')}'"; // Simplified serialization
+  }
+
+  @override
+  List<T>? fromSqlValue(dynamic value) {
+    if (value == null) return null;
+    if (value is String && value.isNotEmpty) {
+      // Simplified deserialization - in production, use proper JSON or ID list
+      return value.split(',').cast<T>();
+    }
+    return <T>[];
+  }
+
+  /// Generate through table name
+  String generateThroughTableName(String fromTable, String toTable) {
+    return dbTable ?? '${fromTable}_${toTable}';
+  }
+
+  /// Generate through table SQL
+  String generateThroughTableSql(String fromTable, String toTable) {
+    final throughTableName = generateThroughTableName(fromTable, toTable);
+    return '''
+      CREATE TABLE IF NOT EXISTS $throughTableName (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ${fromTable}_id INTEGER NOT NULL,
+        ${toTable}_id INTEGER NOT NULL,
+        FOREIGN KEY (${fromTable}_id) REFERENCES ${fromTable}s(id) ON DELETE CASCADE,
+        FOREIGN KEY (${toTable}_id) REFERENCES ${toTable}s(id) ON DELETE CASCADE,
+        UNIQUE(${fromTable}_id, ${toTable}_id)
+      )
+    ''';
+  }
+}

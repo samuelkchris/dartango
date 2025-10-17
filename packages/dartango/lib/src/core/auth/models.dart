@@ -9,17 +9,17 @@ class User extends Model {
   String? _database;
 
   // Field definitions for the ORM
-  final AutoField idField = AutoField();
-  final CharField usernameField = CharField(maxLength: 150, unique: true);
-  final EmailField emailField = EmailField();
-  final CharField firstNameField = CharField(maxLength: 150, blank: true);
-  final CharField lastNameField = CharField(maxLength: 150, blank: true);
-  final BooleanField isActiveField = BooleanField(defaultValue: true);
-  final BooleanField isStaffField = BooleanField(defaultValue: false);
-  final BooleanField isSuperuserField = BooleanField(defaultValue: false);
-  final DateTimeField dateJoinedField = DateTimeField(autoNowAdd: true);
-  final DateTimeField lastLoginField = DateTimeField(allowNull: true);
-  final CharField passwordField = CharField(maxLength: 128);
+  final AutoField idField = AutoField(columnName: 'id');
+  final CharField usernameField = CharField(maxLength: 150, unique: true, columnName: 'username');
+  final EmailField emailField = EmailField(columnName: 'email');
+  final CharField firstNameField = CharField(maxLength: 150, blank: true, columnName: 'first_name');
+  final CharField lastNameField = CharField(maxLength: 150, blank: true, columnName: 'last_name');
+  final BooleanField isActiveField = BooleanField(defaultValue: true, columnName: 'is_active');
+  final BooleanField isStaffField = BooleanField(defaultValue: false, columnName: 'is_staff');
+  final BooleanField isSuperuserField = BooleanField(defaultValue: false, columnName: 'is_superuser');
+  final DateTimeField dateJoinedField = DateTimeField(autoNowAdd: true, columnName: 'date_joined');
+  final DateTimeField lastLoginField = DateTimeField(allowNull: true, columnName: 'last_login');
+  final CharField passwordField = CharField(maxLength: 128, columnName: 'password');
 
   User({String? database}) : _database = database;
 

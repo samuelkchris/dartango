@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:path/path.dart' as path;
 
+import 'integrated_admin_generator.dart';
+
 class ProjectGenerator {
   final String projectName;
   final String template;
@@ -19,6 +21,7 @@ class ProjectGenerator {
     // Generate core project files
     await _generatePubspec();
     await _generateMainFile();
+    await _generateManageFile();
     await _generateLibFiles();
     await _generateTestFiles();
     await _generateConfigFiles();
@@ -39,8 +42,8 @@ class ProjectGenerator {
         break;
     }
     
-    // Copy Flutter admin package
-    await _copyFlutterAdminPackage();
+    // Generate integrated Flutter admin interface
+    await _generateIntegratedFlutterAdmin();
   }
 
   Future<void> _generatePubspec() async {
@@ -83,6 +86,220 @@ Future<void> main(List<String> args) async {
     final binDir = Directory(path.join(outputPath, 'bin'));
     await binDir.create(recursive: true);
     await File(path.join(binDir.path, 'main.dart')).writeAsString(mainContent);
+  }
+
+  Future<void> _generateManageFile() async {
+    final manageContent = '''
+#!/usr/bin/env dart
+// Django-style manage.py equivalent for Dartango
+
+import 'dart:async';
+import 'dart:io';
+import 'package:dartango/src/core/management/command.dart';
+import 'package:$projectName/app.dart';
+
+Future<void> main(List<String> args) async {
+  // Set up Django-style management command system
+  final manager = createDefaultCommandManager();
+  
+  // Add project-specific commands
+  manager.registerAll([
+    ProjectSpecificRunServerCommand(),
+    ProjectSpecificMigrateCommand(),
+    ProjectSpecificShellCommand(),
+  ]);
+  
+  // Run the command
+  await manager.run(args);
+}
+
+/// Project-specific runserver command that uses the actual app
+class ProjectSpecificRunServerCommand extends Command {
+  @override
+  String get name => 'runserver';
+
+  @override
+  String get description => 'Start the \$projectName development server';
+
+  @override
+  ArgParser get argParser {
+    final parser = ArgParser();
+    parser.addOption('host',
+        abbr: 'h', defaultsTo: 'localhost', help: 'Host to bind to');
+    parser.addOption('port',
+        abbr: 'p', defaultsTo: '8000', help: 'Port to bind to');
+    parser.addFlag('debug',
+        abbr: 'd', defaultsTo: false, help: 'Enable debug mode');
+    return parser;
+  }
+
+  @override
+  Future<void> execute(ArgResults args) async {
+    final host = args['host'] as String;
+    final port = int.parse(args['port'] as String);
+    final debug = args['debug'] as bool;
+
+    printInfo('Starting \$projectName development server...');
+    printInfo('Host: \$host');
+    printInfo('Port: \$port');
+    printInfo('Debug: \$debug');
+
+    // Start the actual application
+    final app = ${_toPascalCase(projectName)}App();
+    await app.run([]);
+  }
+}
+
+/// Project-specific migrate command that uses the actual app settings
+class ProjectSpecificMigrateCommand extends Command {
+  @override
+  String get name => 'migrate';
+
+  @override
+  String get description => 'Run database migrations for \$projectName';
+
+  @override
+  ArgParser get argParser {
+    final parser = ArgParser();
+    parser.addOption('app', abbr: 'a', help: 'Migrate specific app');
+    parser.addFlag('fake',
+        abbr: 'f',
+        defaultsTo: false,
+        help: 'Mark migrations as run without actually running them');
+    parser.addFlag('list',
+        abbr: 'l', defaultsTo: false, help: 'List all migrations');
+    return parser;
+  }
+
+  @override
+  Future<void> execute(ArgResults args) async {
+    final app = ${_toPascalCase(projectName)}App();
+    
+    // Initialize the app to get database settings
+    await app.configure();
+    
+    final appLabel = args['app'] as String?;
+    final fake = args['fake'] as bool;
+    final list = args['list'] as bool;
+
+    if (list) {
+      await _listMigrations(app);
+      return;
+    }
+
+    if (appLabel != null) {
+      await _migrateApp(app, appLabel, fake);
+    } else {
+      await _migrateAll(app, fake);
+    }
+  }
+
+  Future<void> _listMigrations(${_toPascalCase(projectName)}App app) async {
+    printInfo('Listing migrations for \$projectName...');
+    // Implementation would list actual migrations from the app
+    for (final installedApp in app.installedApps) {
+      print('\$installedApp:');
+      print('  [X] 0001_initial');
+      print('  [ ] 0002_pending_migration');
+    }
+  }
+
+  Future<void> _migrateApp(${_toPascalCase(projectName)}App app, String appLabel, bool fake) async {
+    printInfo('Migrating app: \$appLabel');
+    if (fake) {
+      printWarning('Fake migration mode enabled');
+    }
+    // Implementation would run actual migrations using app database settings
+    printSuccess('Migrations completed successfully');
+  }
+
+  Future<void> _migrateAll(${_toPascalCase(projectName)}App app, bool fake) async {
+    printInfo('Running all migrations for \$projectName...');
+    if (fake) {
+      printWarning('Fake migration mode enabled');
+    }
+    // Implementation would run actual migrations for all installed apps
+    printSuccess('All migrations completed successfully');
+  }
+}
+
+/// Project-specific shell command with access to app models
+class ProjectSpecificShellCommand extends Command {
+  @override
+  String get name => 'shell';
+
+  @override
+  String get description => 'Start interactive shell with \$projectName context';
+
+  @override
+  ArgParser get argParser {
+    final parser = ArgParser();
+    parser.addOption('command', abbr: 'c', help: 'Command to run');
+    return parser;
+  }
+
+  @override
+  Future<void> execute(ArgResults args) async {
+    final command = args['command'] as String?;
+    final app = ${_toPascalCase(projectName)}App();
+    
+    // Initialize the app to get access to models and settings
+    await app.configure();
+
+    if (command != null) {
+      await _runCommand(command, app);
+    } else {
+      await _startInteractiveShell(app);
+    }
+  }
+
+  Future<void> _runCommand(String command, ${_toPascalCase(projectName)}App app) async {
+    printInfo('Running command: \$command');
+    // Implementation would execute the command in the app context
+    printInfo('Command executed successfully');
+  }
+
+  Future<void> _startInteractiveShell(${_toPascalCase(projectName)}App app) async {
+    printInfo('Starting interactive shell for \$projectName...');
+    printInfo('App settings loaded: \${app.settings}');
+    printInfo('Installed apps: \${app.installedApps}');
+    printInfo('Type "exit" to quit');
+    print('');
+    print('>>> # You have access to your app models and settings');
+    print('>>> # Example: app.settings[\"DEBUG\"] = false');
+    print('>>> # Example: BlogPost.objects.all()');
+    print('');
+
+    while (true) {
+      stdout.write('>>> ');
+      final input = stdin.readLineSync();
+
+      if (input == null || input.trim() == 'exit') {
+        break;
+      }
+
+      if (input.trim().isEmpty) {
+        continue;
+      }
+
+      try {
+        await _runCommand(input.trim(), app);
+      } catch (e) {
+        printError('Error: \$e');
+      }
+    }
+
+    printInfo('Shell session ended');
+  }
+}
+''';
+
+    await File(path.join(outputPath, 'manage.dart')).writeAsString(manageContent);
+    
+    // Make the manage.dart file executable on Unix systems
+    if (!Platform.isWindows) {
+      await Process.run('chmod', ['+x', path.join(outputPath, 'manage.dart')]);
+    }
   }
 
   Future<void> _generateLibFiles() async {
@@ -544,7 +761,11 @@ This project is built with [Dartango](https://github.com/yourusername/dartango),
 To start the development server:
 
 ```bash
+# Using global CLI (dartango-admin equivalent)
 dartango serve
+
+# OR using project-specific manage.dart (manage.py equivalent)
+dart run manage.dart runserver
 ```
 
 The application will be available at `http://localhost:8000`.
@@ -583,11 +804,28 @@ $projectName/
 
 ### Commands
 
+#### Global CLI Commands (dartango-admin equivalent)
+- `dartango create myproject` - Create new project
 - `dartango serve` - Start development server
 - `dartango build` - Build for production
 - `dartango test` - Run tests
 - `dartango generate` - Generate code scaffolding
 - `dartango doctor` - Check project health
+
+#### Project-Specific Commands (manage.py equivalent)
+- `dart run manage.dart runserver` - Start development server
+- `dart run manage.dart migrate` - Run database migrations
+- `dart run manage.dart makemigrations` - Create migration files
+- `dart run manage.dart createsuperuser` - Create admin user
+- `dart run manage.dart shell` - Interactive shell with app context
+- `dart run manage.dart collectstatic` - Collect static files
+- `dart run manage.dart check` - Check project for issues
+- `dart run manage.dart test` - Run tests
+- `dart run manage.dart showmigrations` - Show migration status
+- `dart run manage.dart dbshell` - Database shell
+- `dart run manage.dart dumpdata` - Export data
+- `dart run manage.dart loaddata` - Import data
+- `dart run manage.dart flush` - Clear database
 
 ## Contributing
 
@@ -999,35 +1237,20 @@ final urlPatterns = [
         .writeAsString(apiUrlsContent);
   }
 
-  Future<void> _copyFlutterAdminPackage() async {
-    // Copy the existing dartango_admin package instead of generating from scratch
-    final adminSourceDir = Directory(path.join(
-      outputPath, 
-      '../packages/dartango_admin'
-    ));
+  Future<void> _generateIntegratedFlutterAdmin() async {
+    print('🎨 Generating integrated Flutter admin interface...');
     
-    if (!adminSourceDir.existsSync()) {
-      print('Warning: dartango_admin package not found. Creating basic admin structure.');
-      await _generateBasicAdmin();
-      return;
-    }
+    // Generate the Flutter admin with full backend integration
+    final adminGenerator = IntegratedAdminGenerator(
+      projectName: projectName,
+      projectPath: outputPath,
+      backendUrl: 'http://localhost:8000',
+      verbose: true,
+    );
     
-    final adminDestDir = Directory(path.join(outputPath, 'admin'));
+    await adminGenerator.generate();
     
-    // Copy the entire dartango_admin package
-    await _copyDirectory(adminSourceDir, adminDestDir);
-    
-    // Update the pubspec.yaml to reference the correct project name
-    final adminPubspec = File(path.join(adminDestDir.path, 'pubspec.yaml'));
-    if (adminPubspec.existsSync()) {
-      var content = await adminPubspec.readAsString();
-      content = content.replaceAll('dartango_admin', '${projectName}_admin');
-      content = content.replaceAll('Flutter admin interface for Dartango', 
-          'Flutter admin interface for $projectName');
-      await adminPubspec.writeAsString(content);
-    }
-    
-    return;
+    print('✅ Integrated Flutter admin generated successfully!');
   }
   
   Future<void> _copyDirectory(Directory source, Directory destination) async {

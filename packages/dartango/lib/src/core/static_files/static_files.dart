@@ -53,10 +53,8 @@ class StaticFilesHandler {
     try {
       final cdnUrl =
           GlobalSettings.instance.getSetting<String>('STATIC_CDN_URL');
-      if (cdnUrl != null) {
-        _finders.add(CdnFinder(cdnUrl: cdnUrl));
-      }
-    } catch (e) {
+      _finders.add(CdnFinder(cdnUrl: cdnUrl));
+        } catch (e) {
       // CDN URL not configured, skip
     }
 

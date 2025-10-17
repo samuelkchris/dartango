@@ -5,6 +5,7 @@ import 'dart:io';
 
 import '../http/request.dart';
 import '../http/response.dart';
+import '../utils/crypto.dart';
 import 'base.dart';
 import 'session.dart';
 
@@ -54,7 +55,7 @@ class CsrfViewMiddleware extends BaseMiddleware {
         cookieHttpOnly = cookieHttpOnly ?? false,
         cookieSameSite = cookieSameSite ?? SameSite.lax,
         cookieAge = cookieAge ?? const Duration(seconds: 31449600),
-        secretKey = secretKey ?? 'default-secret-key',
+        secretKey = secretKey ?? SecureKeyGenerator.generateDjangoSecretKey(),
         salt = salt ?? 'django.middleware.csrf.CsrfViewMiddleware',
         trustedOrigins = trustedOrigins ?? [],
         failureView = failureView ?? csrfFailureView,
@@ -302,6 +303,7 @@ class CsrfViewMiddleware extends BaseMiddleware {
       headers: {'Content-Type': 'text/plain'},
     );
   }
+
 }
 
 class CsrfToken {

@@ -1,18 +1,22 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_static/shelf_static.dart';
-import 'package:path/path.dart' as p;
-
 import 'core/database/connection.dart';
 import 'core/admin/admin.dart';
+import 'core/admin/autodiscover.dart';
+import 'core/admin/integration.dart';
 import 'core/auth/models.dart' as auth;
 import 'core/http/request.dart';
 import 'core/http/response.dart';
 import 'core/views/base.dart';
-import 'core/templates/engine.dart';
+import 'core/templates/flutter_template_engine.dart';
+import 'core/templates/flutter_renderer.dart';
+import 'core/utils/crypto.dart';
+import 'core/auth/jwt.dart';
 import 'core/websocket/server.dart';
 
 abstract class DartangoApp {
@@ -20,89 +24,106 @@ abstract class DartangoApp {
   late Router _router;
   late AdminSite _adminSite;
   late WebSocketServer _webSocketServer;
-  
+  FlutterTemplateEngine? _flutterTemplateEngine;
+
   String get name => runtimeType.toString().replaceAll('App', '').toLowerCase();
+
   String get version => '1.0.0';
-  
+
   List<String> get installedApps => [];
+
   Map<String, dynamic> get settings => {};
+
   List<String> get urlPatterns => [];
+
   List<Middleware> get middleware => [];
-  
+
   String get host => settings['HOST'] ?? 'localhost';
+
   int get port => settings['PORT'] ?? 8000;
+
   bool get debug => settings['DEBUG'] ?? false;
-  String get secretKey => settings['SECRET_KEY'] ?? 'your-secret-key-here';
-  List<String> get allowedHosts => settings['ALLOWED_HOSTS'] ?? ['localhost', '127.0.0.1'];
-  
+
+  String get secretKey =>
+      settings['SECRET_KEY'] ?? SecureKeyGenerator.generateDjangoSecretKey();
+
+  List<String> get allowedHosts =>
+      settings['ALLOWED_HOSTS'] ?? ['localhost', '127.0.0.1'];
+
   String get databaseUrl => settings['DATABASE_URL'] ?? 'sqlite:///db.sqlite3';
+
   String get staticUrl => settings['STATIC_URL'] ?? '/static/';
+
   String get staticRoot => settings['STATIC_ROOT'] ?? 'web/static/';
+
   String get mediaUrl => settings['MEDIA_URL'] ?? '/media/';
+
   String get mediaRoot => settings['MEDIA_ROOT'] ?? 'web/media/';
-  
+
   String get templateDir => settings['TEMPLATE_DIR'] ?? 'templates/';
+
   String get adminUrl => settings['ADMIN_URL'] ?? '/admin/';
-  
+
   Future<void> run(List<String> args) async {
     print('🚀 Starting $name v$version...');
-    
+
     await configure();
     await _initializeDatabase();
     await _setupAdmin();
+    await _setupTemplates();
     await _setupRoutes();
     await _setupMiddleware();
     await _setupWebSocket();
-    
+
     final handler = _createHandler();
     _server = await serve(handler, host, port);
-    
+
     print('✅ $name running on http://$host:$port');
     print('📋 Admin interface: http://$host:$port$adminUrl');
     if (debug) {
       print('🔧 Debug mode enabled');
     }
     print('Press Ctrl+C to stop the server\n');
-    
+
     // Server automatically handles connection cleanup
   }
-  
+
   Future<void> stop() async {
     print('🛑 Stopping $name server...');
     await _server.close();
     // Database connections handled automatically
     print('✅ Server stopped');
   }
-  
+
   Future<void> configure() async {
     // Override in subclasses for custom configuration
   }
-  
+
   Future<void> _initializeDatabase() async {
     print('📊 Initializing database...');
-    
+
     final config = DatabaseConfig(
       backend: DatabaseBackend.sqlite,
       database: _extractDatabaseName(databaseUrl),
       maxConnections: 10,
       connectionTimeout: Duration(seconds: 30),
     );
-    
+
     DatabaseRouter.registerDatabase('default', config);
-    
+
     await _createAuthTables();
     await _createDefaultSuperuser();
-    
+
     print('✅ Database initialized');
   }
-  
+
   String _extractDatabaseName(String url) {
     if (url.startsWith('sqlite:///')) {
       return url.substring(10);
     }
     return 'db.sqlite3';
   }
-  
+
   Future<void> _createAuthTables() async {
     final connection = await DatabaseRouter.getConnection();
     try {
@@ -121,7 +142,7 @@ abstract class DartangoApp {
           password VARCHAR(128) NOT NULL
         )
       ''');
-      
+
       await connection.execute('''
         CREATE TABLE IF NOT EXISTS auth_groups (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,40 +153,83 @@ abstract class DartangoApp {
       await DatabaseRouter.releaseConnection(connection);
     }
   }
-  
+
   Future<void> _createDefaultSuperuser() async {
-    try {
-      await auth.User.createSuperuser(
-        username: 'admin',
-        email: 'admin@${name}.com',
-        password: 'admin123',
-        firstName: 'Admin',
-        lastName: 'User',
-      );
-      print('✅ Default superuser created: admin/admin123');
-    } catch (e) {
-      // User already exists
+    // Only create default superuser in development mode
+    if (debug) {
+      final defaultUsername = settings['DEFAULT_SUPERUSER_USERNAME'] ?? 'admin';
+      final defaultPassword = settings['DEFAULT_SUPERUSER_PASSWORD'] ??
+          SecureKeyGenerator.generateUrlSafeToken(length: 12);
+
+      try {
+        await auth.User.createSuperuser(
+          username: defaultUsername,
+          email: 'admin@${name}.com',
+          password: defaultPassword,
+          firstName: 'Admin',
+          lastName: 'User',
+        );
+        print(
+            '✅ Development superuser created: $defaultUsername/$defaultPassword');
+        print('⚠️  WARNING: Change default credentials in production!');
+      } catch (e) {
+        // User already exists
+      }
     }
   }
-  
+
   Future<void> _setupAdmin() async {
-    print('🔧 Setting up admin interface...');
-    
+    print('🔧 Setting up Django-style admin interface...');
+
     _adminSite = AdminSite();
+    
+    // Setup built-in admin models
     setupDefaultAdmin();
-    
+
+    // Initialize admin integration
+    await AdminIntegration().initialize(
+      projectPath: Directory.current.path,
+      adminSite: _adminSite,
+      autoDiscover: true,
+    );
+
+    // Setup custom admin configurations
     await setupAdmin(_adminSite);
-    
-    print('✅ Admin interface configured');
+
+    print('✅ Django-style admin interface configured');
   }
-  
+
+  Future<void> _setupTemplates() async {
+    print('🎨 Setting up Flutter templates...');
+
+    _flutterTemplateEngine = FlutterTemplateEngine(
+      templateDir: 'templates',
+      debug: debug,
+    );
+
+    // Register default templates
+    TemplateRegistry.registerDefaults();
+
+    // Register custom templates
+    if (_flutterTemplateEngine != null) {
+      await setupFlutterTemplates(_flutterTemplateEngine!);
+    }
+
+    print('✅ Flutter templates configured');
+  }
+
   Future<void> setupAdmin(AdminSite adminSite) async {
     // Override in subclasses to register models
   }
-  
+
+  Future<void> setupFlutterTemplates(
+      FlutterTemplateEngine templateEngine) async {
+    // Override in subclasses to register custom templates
+  }
+
   Future<void> _setupRoutes() async {
     _router = Router();
-    
+
     // Static files (only create if directories exist)
     final staticDir = Directory(staticRoot);
     if (staticDir.existsSync()) {
@@ -175,42 +239,61 @@ abstract class DartangoApp {
     if (mediaDir.existsSync()) {
       _router.mount(mediaUrl, createStaticHandler(mediaRoot));
     }
-    
+
     // WebSocket endpoint
     _router.get('/ws', _webSocketHandler);
+
+    // Django-style admin routes
+    _router.get('${adminUrl}', _adminIndexHandler);
+    _router.get('${adminUrl}login/', _adminLoginHandler);
+    _router.post('${adminUrl}login/', _adminLoginHandler);
+    _router.get('${adminUrl}logout/', _adminLogoutHandler);
     
-    // Admin API routes only (no HTML - pure Flutter admin)
+    // Model admin routes (Django-style)
+    _router.get('${adminUrl}<app>/<model>/', _adminModelListHandler);
+    _router.get('${adminUrl}<app>/<model>/add/', _adminModelAddHandler);
+    _router.post('${adminUrl}<app>/<model>/add/', _adminModelAddHandler);
+    _router.get('${adminUrl}<app>/<model>/<id>/change/', _adminModelChangeHandler);
+    _router.post('${adminUrl}<app>/<model>/<id>/change/', _adminModelChangeHandler);
+    _router.get('${adminUrl}<app>/<model>/<id>/delete/', _adminModelDeleteHandler);
+    _router.post('${adminUrl}<app>/<model>/<id>/delete/', _adminModelDeleteHandler);
+    
+    // Admin API routes for Flutter admin
+    _router.get('${adminUrl}api/', _adminApiIndexHandler);
+    _router.get('${adminUrl}api/apps/', _adminApiAppsHandler);
     _router.get('${adminUrl}api/<app>/<model>/', _adminApiListHandler);
     _router.get('${adminUrl}api/<app>/<model>/<id>/', _adminApiDetailHandler);
     _router.post('${adminUrl}api/<app>/<model>/', _adminApiCreateHandler);
     _router.put('${adminUrl}api/<app>/<model>/<id>/', _adminApiUpdateHandler);
-    _router.delete('${adminUrl}api/<app>/<model>/<id>/', _adminApiDeleteHandler);
-    
+    _router.delete(
+        '${adminUrl}api/<app>/<model>/<id>/', _adminApiDeleteHandler);
+
     // Authentication API
     _router.post('/api/auth/login/', _authLoginHandler);
     _router.post('/api/auth/logout/', _authLogoutHandler);
+    _router.post('/api/auth/refresh/', _authRefreshHandler);
     _router.get('/api/auth/user/', _authUserHandler);
-    
+
     // User-defined routes
     await setupRoutes(_router);
-    
+
     // Default root handler
     _router.get('/', _defaultRootHandler);
   }
-  
+
   Future<void> setupRoutes(Router router) async {
     // Override in subclasses to add custom routes
   }
-  
+
   Future<void> _setupMiddleware() async {
     // Middleware will be applied in the handler
   }
-  
+
   Future<void> _setupWebSocket() async {
     _webSocketServer = WebSocketServer();
     // WebSocket server initialized automatically
   }
-  
+
   Handler _createHandler() {
     return Pipeline()
         .addMiddleware(logRequests())
@@ -220,7 +303,7 @@ abstract class DartangoApp {
         .addMiddleware(_authenticationMiddleware())
         .addHandler(_router);
   }
-  
+
   Middleware _corsMiddleware() {
     return createMiddleware(
       requestHandler: (Request request) {
@@ -242,7 +325,7 @@ abstract class DartangoApp {
       },
     );
   }
-  
+
   Middleware _securityMiddleware() {
     return createMiddleware(
       responseHandler: (Response response) {
@@ -255,7 +338,7 @@ abstract class DartangoApp {
       },
     );
   }
-  
+
   Middleware _sessionMiddleware() {
     return createMiddleware(
       requestHandler: (Request request) {
@@ -264,7 +347,7 @@ abstract class DartangoApp {
       },
     );
   }
-  
+
   Middleware _authenticationMiddleware() {
     return createMiddleware(
       requestHandler: (Request request) {
@@ -273,28 +356,134 @@ abstract class DartangoApp {
       },
     );
   }
-  
+
   Future<Response> _webSocketHandler(Request request) async {
     return Response.ok('WebSocket support coming soon');
   }
-  
+
   // HTML admin handlers removed - pure Flutter admin only
-  
+
   // Flutter admin handler removed - admin is standalone Flutter app
+
+  // Django-style admin handlers
+  Future<Response> _adminIndexHandler(Request request) async {
+    final httpRequest = HttpRequest(request);
+    final response = await _adminSite.indexView(httpRequest);
+    return _convertHttpResponse(response);
+  }
+  
+  Future<Response> _adminLoginHandler(Request request) async {
+    final httpRequest = HttpRequest(request);
+    final response = await _adminSite.loginView(httpRequest);
+    return _convertHttpResponse(response);
+  }
+  
+  Future<Response> _adminLogoutHandler(Request request) async {
+    final httpRequest = HttpRequest(request);
+    final response = await _adminSite.logoutView(httpRequest);
+    return _convertHttpResponse(response);
+  }
+  
+  Future<Response> _adminModelListHandler(Request request) async {
+    final app = request.params['app']!;
+    final model = request.params['model']!;
+    final httpRequest = HttpRequest(request);
+    
+    final modelAdmin = _adminSite.getModelAdminByName(app, model);
+    if (modelAdmin == null) {
+      return Response.notFound('{"error": "Model not found"}');
+    }
+    
+    final response = await modelAdmin.changelistView(httpRequest);
+    return _convertHttpResponse(response);
+  }
+  
+  Future<Response> _adminModelAddHandler(Request request) async {
+    final app = request.params['app']!;
+    final model = request.params['model']!;
+    final httpRequest = HttpRequest(request);
+    
+    final modelAdmin = _adminSite.getModelAdminByName(app, model);
+    if (modelAdmin == null) {
+      return Response.notFound('{"error": "Model not found"}');
+    }
+    
+    final response = await modelAdmin.addView(httpRequest);
+    return _convertHttpResponse(response);
+  }
+  
+  Future<Response> _adminModelChangeHandler(Request request) async {
+    final app = request.params['app']!;
+    final model = request.params['model']!;
+    final id = request.params['id']!;
+    final httpRequest = HttpRequest(request);
+    
+    final modelAdmin = _adminSite.getModelAdminByName(app, model);
+    if (modelAdmin == null) {
+      return Response.notFound('{"error": "Model not found"}');
+    }
+    
+    final response = await modelAdmin.changeView(httpRequest, id);
+    return _convertHttpResponse(response);
+  }
+  
+  Future<Response> _adminModelDeleteHandler(Request request) async {
+    final app = request.params['app']!;
+    final model = request.params['model']!;
+    final id = request.params['id']!;
+    final httpRequest = HttpRequest(request);
+    
+    final modelAdmin = _adminSite.getModelAdminByName(app, model);
+    if (modelAdmin == null) {
+      return Response.notFound('{"error": "Model not found"}');
+    }
+    
+    final response = await modelAdmin.deleteView(httpRequest, id);
+    return _convertHttpResponse(response);
+  }
+  
+  // Flutter admin API handlers
+  Future<Response> _adminApiIndexHandler(Request request) async {
+    final adminIntegration = AdminIntegration();
+    final config = {
+      'site_title': _adminSite.siteTitle,
+      'site_header': _adminSite.siteHeader,
+      'index_title': _adminSite.indexTitle,
+      'models': AdminAutoDiscovery().discoveredModels.map((app, models) {
+        return MapEntry(app, models.map((model) => model.toString()).toList());
+      }),
+      'admin_url': adminUrl,
+    };
+    
+    return Response.ok(
+      jsonEncode(config),
+      headers: {'Content-Type': 'application/json'},
+    );
+  }
+  
+  Future<Response> _adminApiAppsHandler(Request request) async {
+    final httpRequest = HttpRequest(request);
+    final appList = await _adminSite.getAppList(httpRequest);
+    
+    return Response.ok(
+      jsonEncode({'apps': appList}),
+      headers: {'Content-Type': 'application/json'},
+    );
+  }
   
   Future<Response> _adminApiListHandler(Request request) async {
     final app = request.params['app']!;
     final model = request.params['model']!;
-    
+
     try {
       final modelAdmin = _adminSite.getModelAdminByName(app, model);
       if (modelAdmin == null) {
         return Response.notFound('{"error": "Model not found"}');
       }
-      
+
       final objects = await modelAdmin.getQueryset();
       final jsonData = objects.map((obj) => obj.toJson()).toList();
-      
+
       return Response.ok(
         '{"results": ${_jsonEncode(jsonData)}, "count": ${objects.length}}',
         headers: {'Content-Type': 'application/json'},
@@ -306,22 +495,31 @@ abstract class DartangoApp {
     }
   }
   
+  /// Convert HttpResponse to Shelf Response
+  Response _convertHttpResponse(HttpResponse httpResponse) {
+    return Response(
+      httpResponse.statusCode,
+      body: httpResponse.body,
+      headers: httpResponse.headers,
+    );
+  }
+
   Future<Response> _adminApiDetailHandler(Request request) async {
     final app = request.params['app']!;
     final model = request.params['model']!;
     final id = request.params['id']!;
-    
+
     try {
       final modelAdmin = _adminSite.getModelAdminByName(app, model);
       if (modelAdmin == null) {
         return Response.notFound('{"error": "Model not found"}');
       }
-      
+
       final object = await modelAdmin.getObject(id);
       if (object == null) {
         return Response.notFound('{"error": "Object not found"}');
       }
-      
+
       return Response.ok(
         _jsonEncode(object.toJson()),
         headers: {'Content-Type': 'application/json'},
@@ -332,88 +530,313 @@ abstract class DartangoApp {
       );
     }
   }
-  
+
   Future<Response> _adminApiCreateHandler(Request request) async {
-    // TODO: Implement create functionality
-    return Response.ok('{"message": "Create functionality will be implemented"}');
+    final app = request.params['app']!;
+    final model = request.params['model']!;
+    final httpRequest = HttpRequest(request);
+    
+    final modelAdmin = _adminSite.getModelAdminByName(app, model);
+    if (modelAdmin == null) {
+      return Response.notFound('{"error": "Model not found"}');
+    }
+    
+    final response = await modelAdmin.addView(httpRequest);
+    return _convertHttpResponse(response);
   }
-  
+
   Future<Response> _adminApiUpdateHandler(Request request) async {
-    // TODO: Implement update functionality
-    return Response.ok('{"message": "Update functionality will be implemented"}');
+    final app = request.params['app']!;
+    final model = request.params['model']!;
+    final id = request.params['id']!;
+    final httpRequest = HttpRequest(request);
+    
+    final modelAdmin = _adminSite.getModelAdminByName(app, model);
+    if (modelAdmin == null) {
+      return Response.notFound('{"error": "Model not found"}');
+    }
+    
+    final response = await modelAdmin.changeView(httpRequest, id);
+    return _convertHttpResponse(response);
   }
-  
+
   Future<Response> _adminApiDeleteHandler(Request request) async {
-    // TODO: Implement delete functionality
-    return Response.ok('{"message": "Delete functionality will be implemented"}');
+    final app = request.params['app']!;
+    final model = request.params['model']!;
+    final id = request.params['id']!;
+    final httpRequest = HttpRequest(request);
+    
+    final modelAdmin = _adminSite.getModelAdminByName(app, model);
+    if (modelAdmin == null) {
+      return Response.notFound('{"error": "Model not found"}');
+    }
+    
+    final response = await modelAdmin.deleteView(httpRequest, id);
+    return _convertHttpResponse(response);
   }
-  
+
   Future<Response> _authLoginHandler(Request request) async {
-    // TODO: Implement authentication
-    return Response.ok('{"token": "dummy-token", "user": {"username": "admin", "email": "admin@example.com"}}');
+    try {
+      final body = await request.readAsString();
+      final data = jsonDecode(body);
+
+      final username = data['username'] as String?;
+      final password = data['password'] as String?;
+
+      if (username == null || password == null) {
+        return Response(400,
+            body: jsonEncode({
+              'error': 'Username and password are required',
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+
+      // Authenticate user
+      final user = await auth.User.getUserByUsername(username);
+      if (user == null || !user.isActive) {
+        return Response(401,
+            body: jsonEncode({
+              'error': 'Invalid credentials',
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+
+      if (!user.checkPassword(password)) {
+        return Response(401,
+            body: jsonEncode({
+              'error': 'Invalid credentials',
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+
+      // Generate JWT token
+      final jwtService = JwtService(secretKey);
+      final jwtToken = jwtService.generateToken(user.id, user.username);
+
+      return Response.ok(
+          jsonEncode({
+            'token': jwtToken.accessToken,
+            'refresh_token': jwtToken.refreshToken,
+            'expires_in':
+                jwtToken.expiresAt.difference(DateTime.now()).inSeconds,
+            'user': {
+              'id': user.id,
+              'username': user.username,
+              'email': user.email,
+              'first_name': user.firstName,
+              'last_name': user.lastName,
+              'is_staff': user.isStaff,
+              'is_superuser': user.isSuperuser,
+            },
+          }),
+          headers: {'Content-Type': 'application/json'});
+    } catch (e) {
+      return Response(500,
+          body: jsonEncode({
+            'error': 'Authentication failed',
+          }),
+          headers: {'Content-Type': 'application/json'});
+    }
   }
-  
+
   Future<Response> _authLogoutHandler(Request request) async {
-    return Response.ok('{"message": "Logged out successfully"}');
+    // For JWT, logout is handled client-side by discarding the token
+    // In production, you might want to maintain a token blacklist
+    return Response.ok(
+        jsonEncode({
+          'message': 'Logged out successfully',
+        }),
+        headers: {'Content-Type': 'application/json'});
   }
-  
+
+  Future<Response> _authRefreshHandler(Request request) async {
+    try {
+      final body = await request.readAsString();
+      final data = jsonDecode(body);
+
+      final refreshToken = data['refresh_token'] as String?;
+      if (refreshToken == null) {
+        return Response(400,
+            body: jsonEncode({
+              'error': 'Refresh token is required',
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+
+      final jwtService = JwtService(secretKey);
+      final newTokens = jwtService.refreshAccessToken(refreshToken);
+
+      if (newTokens == null) {
+        return Response(401,
+            body: jsonEncode({
+              'error': 'Invalid or expired refresh token',
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+
+      return Response.ok(
+          jsonEncode({
+            'token': newTokens.accessToken,
+            'refresh_token': newTokens.refreshToken,
+            'expires_in':
+                newTokens.expiresAt.difference(DateTime.now()).inSeconds,
+          }),
+          headers: {'Content-Type': 'application/json'});
+    } catch (e) {
+      return Response(500,
+          body: jsonEncode({
+            'error': 'Token refresh failed',
+          }),
+          headers: {'Content-Type': 'application/json'});
+    }
+  }
+
   Future<Response> _authUserHandler(Request request) async {
-    return Response.ok('{"username": "admin", "email": "admin@example.com", "is_staff": true}');
+    try {
+      final authHeader = request.headers['Authorization'];
+      if (authHeader == null || !authHeader.startsWith('Bearer ')) {
+        return Response(401,
+            body: jsonEncode({
+              'error': 'Authentication required',
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+
+      final token = authHeader.substring(7);
+      final jwtService = JwtService(secretKey);
+      final payload = jwtService.verifyToken(token);
+
+      if (payload == null) {
+        return Response(401,
+            body: jsonEncode({
+              'error': 'Invalid token',
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+
+      final userId = payload['user_id'] as int;
+      final user = await auth.User.getUserById(userId);
+
+      if (user == null || !user.isActive) {
+        return Response(401,
+            body: jsonEncode({
+              'error': 'User not found or inactive',
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+
+      return Response.ok(
+          jsonEncode({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.firstName,
+            'last_name': user.lastName,
+            'is_staff': user.isStaff,
+            'is_superuser': user.isSuperuser,
+            'is_active': user.isActive,
+          }),
+          headers: {'Content-Type': 'application/json'});
+    } catch (e) {
+      return Response(500,
+          body: jsonEncode({
+            'error': 'Failed to get user information',
+          }),
+          headers: {'Content-Type': 'application/json'});
+    }
   }
-  
+
   Response _defaultRootHandler(Request request) {
-    return Response.ok('''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>$name - Dartango Application</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .container { text-align: center; color: white; max-width: 600px; padding: 2rem; }
-        h1 { font-size: 3rem; margin-bottom: 1rem; }
-        p { font-size: 1.2rem; margin-bottom: 2rem; }
-        .actions { margin-top: 2rem; }
-        .action-btn { display: inline-block; padding: 15px 30px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 5px; margin: 10px; backdrop-filter: blur(10px); }
-        .action-btn:hover { background: rgba(255,255,255,0.3); }
-        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem; }
-        .feature { background: rgba(255, 255, 255, 0.1); padding: 1rem; border-radius: 8px; backdrop-filter: blur(10px); }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🚀 $name</h1>
-        <p>Your Dartango application is running successfully!</p>
-        
-        <div class="actions">
-            <a href="$adminUrl" class="action-btn">🛠️ Admin Interface</a>
-            <a href="/api/" class="action-btn">🔗 API Documentation</a>
-        </div>
-        
-        <div class="features">
-            <div class="feature">
-                <h3>🎯 Django-Compatible</h3>
-                <p>Familiar patterns and conventions</p>
-            </div>
-            <div class="feature">
-                <h3>⚡ Fast & Modern</h3>
-                <p>Built with Dart for performance</p>
-            </div>
-            <div class="feature">
-                <h3>🔒 Secure by Default</h3>
-                <p>Built-in security features</p>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-    ''', headers: {'Content-Type': 'text/html'});
+    // Use Flutter template for the homepage
+    final context = {
+      'title': name,
+      'version': version,
+      'admin_url': adminUrl,
+      'debug': debug,
+    };
+
+    final widget = Scaffold(
+      body: Container(
+        padding: EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '🚀 $name',
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2196F3),
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: const Text(
+                'Your Dartango application is running successfully!',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Color(0xFF666666),
+                ),
+              ),
+            ),
+            Text(
+              'Version: $version',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF999999),
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.only(top: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: null,
+                    child: const Text('🛠️ Admin Interface'),
+                  ),
+                  ElevatedButton(
+                    onPressed: null,
+                    child: const Text('🔗 API Documentation'),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.only(top: 32),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  CardComponent({
+                    'title': '🎯 Django-Compatible',
+                    'content': 'Familiar patterns and conventions'
+                  }),
+                  CardComponent({
+                    'title': '⚡ Fast & Modern',
+                    'content': 'Built with Dart for performance'
+                  }),
+                  CardComponent({
+                    'title': '🔒 Secure by Default',
+                    'content': 'Built-in security features'
+                  }),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      backgroundColor: const Color(0xFFF5F5F5),
+    );
+
+    final html = widget.render(context);
+    return Response.ok(html, headers: {'Content-Type': 'text/html'});
   }
-  
+
   String _jsonEncode(dynamic object) {
     // Simple JSON encoding - in production, use dart:convert
     if (object is Map) {
-      final entries = object.entries.map((e) => '"${e.key}": ${_jsonEncode(e.value)}');
+      final entries =
+          object.entries.map((e) => '"${e.key}": ${_jsonEncode(e.value)}');
       return '{${entries.join(', ')}}';
     } else if (object is List) {
       final items = object.map((item) => _jsonEncode(item));
@@ -438,43 +861,66 @@ void setupDefaultAdmin() {
 // Template view for convenience
 abstract class TemplateView extends View {
   String get templateName;
-  
+
   @override
-  Future<HttpResponse> get(HttpRequest request, Map<String, dynamic> params) async {
+  Future<HttpResponse> get(
+      HttpRequest request, Map<String, dynamic> params) async {
     final context = getContextData();
     final content = await renderTemplate(templateName, context);
     return HttpResponse.ok(content, headers: {'Content-Type': 'text/html'});
   }
-  
+
   Map<String, dynamic> getContextData() {
     return {};
   }
-  
-  Future<String> renderTemplate(String template, Map<String, dynamic> context) async {
+
+  Future<String> renderTemplate(
+      String template, Map<String, dynamic> context) async {
     // Simple template rendering - replace with actual template engine
     var content = await File('templates/$template').readAsString();
     for (final entry in context.entries) {
-      content = content.replaceAll('{{ ${entry.key} }}', entry.value.toString());
+      content =
+          content.replaceAll('{{ ${entry.key} }}', entry.value.toString());
     }
     return content;
+  }
+
+  /// Render a Flutter template
+  String renderFlutterTemplate(
+      String templateName, Map<String, dynamic> context) {
+    // Access the global flutter template engine
+    final engine = FlutterTemplateEngine(
+      templateDir: 'templates',
+      debug: true,
+    );
+    return engine.render(templateName, context);
+  }
+
+  /// Render a Flutter widget directly
+  String renderFlutterWidget(
+      FlutterWidget widget, Map<String, dynamic> context) {
+    return widget.render(context);
   }
 }
 
 // JSON response view
 class JsonResponse extends HttpResponse {
-  JsonResponse(Map<String, dynamic> data, {int statusCode = 200, Map<String, String>? headers}) 
-      : super(_jsonEncode(data),
+  JsonResponse(Map<String, dynamic> data,
+      {int statusCode = 200, Map<String, String>? headers})
+      : super(
+          _jsonEncode(data),
           statusCode: statusCode,
           headers: {
             'Content-Type': 'application/json',
             ...?headers,
           },
         );
-  
+
   static String _jsonEncode(dynamic object) {
     // Simple JSON encoding - in production, use dart:convert
     if (object is Map) {
-      final entries = object.entries.map((e) => '"${e.key}": ${_jsonEncode(e.value)}');
+      final entries =
+          object.entries.map((e) => '"${e.key}": ${_jsonEncode(e.value)}');
       return '{${entries.join(', ')}}';
     } else if (object is List) {
       final items = object.map((item) => _jsonEncode(item));

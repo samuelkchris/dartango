@@ -394,20 +394,30 @@ class PostgreSQLConnection implements DatabaseConnection {
     }
   }
 
+  void _validateSavepointName(String name) {
+    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(name)) {
+      throw DatabaseException(
+          'Invalid savepoint name: must contain only alphanumeric characters and underscores');
+    }
+  }
+
   @override
   Future<void> setSavepoint(String name) async {
+    _validateSavepointName(name);
     if (!isOpen) await _connect();
     await _connection!.execute('SAVEPOINT $name');
   }
 
   @override
   Future<void> releaseSavepoint(String name) async {
+    _validateSavepointName(name);
     if (!isOpen) await _connect();
     await _connection!.execute('RELEASE SAVEPOINT $name');
   }
 
   @override
   Future<void> rollbackToSavepoint(String name) async {
+    _validateSavepointName(name);
     if (!isOpen) await _connect();
     await _connection!.execute('ROLLBACK TO SAVEPOINT $name');
   }
@@ -617,7 +627,7 @@ class MySQLConnection implements DatabaseConnection {
 
   @override
   Future<void> commitTransaction() async {
-    if (!_inTransaction) return;
+    if (!_inTransaction || _transactionDepth <= 0) return;
 
     _transactionDepth--;
     if (_transactionDepth == 0) {
@@ -641,20 +651,30 @@ class MySQLConnection implements DatabaseConnection {
     }
   }
 
+  void _validateSavepointName(String name) {
+    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(name)) {
+      throw DatabaseException(
+          'Invalid savepoint name: must contain only alphanumeric characters and underscores');
+    }
+  }
+
   @override
   Future<void> setSavepoint(String name) async {
+    _validateSavepointName(name);
     if (!isOpen) await _connect();
     await _connection!.query('SAVEPOINT $name');
   }
 
   @override
   Future<void> releaseSavepoint(String name) async {
+    _validateSavepointName(name);
     if (!isOpen) await _connect();
     await _connection!.query('RELEASE SAVEPOINT $name');
   }
 
   @override
   Future<void> rollbackToSavepoint(String name) async {
+    _validateSavepointName(name);
     if (!isOpen) await _connect();
     await _connection!.query('ROLLBACK TO SAVEPOINT $name');
   }
@@ -902,20 +922,30 @@ class SQLiteConnection implements DatabaseConnection {
     }
   }
 
+  void _validateSavepointName(String name) {
+    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(name)) {
+      throw DatabaseException(
+          'Invalid savepoint name: must contain only alphanumeric characters and underscores');
+    }
+  }
+
   @override
   Future<void> setSavepoint(String name) async {
+    _validateSavepointName(name);
     if (!isOpen) await _connect();
     _database!.execute('SAVEPOINT $name');
   }
 
   @override
   Future<void> releaseSavepoint(String name) async {
+    _validateSavepointName(name);
     if (!isOpen) await _connect();
     _database!.execute('RELEASE SAVEPOINT $name');
   }
 
   @override
   Future<void> rollbackToSavepoint(String name) async {
+    _validateSavepointName(name);
     if (!isOpen) await _connect();
     _database!.execute('ROLLBACK TO SAVEPOINT $name');
   }

@@ -57,6 +57,9 @@ class QueryBuilder {
   int? _offset;
   final List<dynamic> _parameters = [];
   String? _rawSql;
+  final Map<String, String> _joinedTables = {};
+  final Map<String, Type> _relatedModels = {};
+  String? _baseTable;
 
   set rawSql(String? sql) => _rawSql = sql;
 
@@ -75,7 +78,7 @@ class QueryBuilder {
   set limitValue(int? value) => _limit = value;
   set offsetValue(int? value) => _offset = value;
 
-  QueryBuilder();
+  QueryBuilder([this._baseTable]);
 
   QueryBuilder select(List<String> columns) {
     _select.addAll(columns);
@@ -243,12 +246,17 @@ class QueryBuilder {
       buffer.write(' ORDER BY ${_orderBy.join(', ')}');
     }
 
-    if (_limit != null) {
-      buffer.write(' LIMIT $_limit');
-    }
-
-    if (_offset != null) {
-      buffer.write(' OFFSET $_offset');
+    if (_limit != null || _offset != null) {
+      if (_limit != null) {
+        buffer.write(' LIMIT $_limit');
+      } else if (_offset != null) {
+        // SQLite requires LIMIT when using OFFSET
+        buffer.write(' LIMIT -1');
+      }
+      
+      if (_offset != null) {
+        buffer.write(' OFFSET $_offset');
+      }
     }
 
     return buffer.toString();
@@ -258,8 +266,302 @@ class QueryBuilder {
 
   List<dynamic> get mutableParameters => _parameters;
 
+  /// Django-style relationship lookups
+  QueryBuilder whereRelated(String relationshipPath, String operator, dynamic value) {
+    final parts = relationshipPath.split('__');
+    final fieldName = parts.last;
+    final relationshipParts = parts.take(parts.length - 1).toList();
+    
+    if (relationshipParts.isNotEmpty) {
+      final joinPath = _buildJoinPath(relationshipParts);
+      final condition = _buildCondition(joinPath, fieldName, operator, value);
+      _where.add(condition);
+    } else {
+      final condition = _buildCondition(_baseTable ?? _from.first, fieldName, operator, value);
+      _where.add(condition);
+    }
+    
+    return this;
+  }
+  
+  /// Build JOIN path for relationship lookups
+  String _buildJoinPath(List<String> relationshipParts) {
+    String currentTable = _baseTable ?? _from.first;
+    
+    for (int i = 0; i < relationshipParts.length; i++) {
+      final relationshipName = relationshipParts[i];
+      final joinAlias = relationshipParts.take(i + 1).join('_');
+      
+      if (!_joinedTables.containsKey(joinAlias)) {
+        final relatedTable = '${relationshipName}s';
+        final joinCondition = '$currentTable.${relationshipName}_id = $joinAlias.id';
+        
+        _joins.add('LEFT JOIN $relatedTable AS $joinAlias ON $joinCondition');
+        _joinedTables[joinAlias] = relatedTable;
+      }
+      
+      currentTable = joinAlias;
+    }
+    
+    return currentTable;
+  }
+  
+  /// Build condition with proper table alias
+  String _buildCondition(String table, String field, String operator, dynamic value) {
+    final column = '$table.$field';
+    
+    switch (operator) {
+      case 'exact':
+        _parameters.add(value);
+        return '$column = ?';
+      case 'iexact':
+        _parameters.add(value.toString().toLowerCase());
+        return 'LOWER($column) = ?';
+      case 'contains':
+        _parameters.add('%$value%');
+        return '$column LIKE ?';
+      case 'icontains':
+        _parameters.add('%${value.toString().toLowerCase()}%');
+        return 'LOWER($column) LIKE ?';
+      case 'startswith':
+        _parameters.add('$value%');
+        return '$column LIKE ?';
+      case 'istartswith':
+        _parameters.add('${value.toString().toLowerCase()}%');
+        return 'LOWER($column) LIKE ?';
+      case 'endswith':
+        _parameters.add('%$value');
+        return '$column LIKE ?';
+      case 'iendswith':
+        _parameters.add('%${value.toString().toLowerCase()}');
+        return 'LOWER($column) LIKE ?';
+      case 'regex':
+        _parameters.add(value);
+        return '$column REGEXP ?';
+      case 'iregex':
+        _parameters.add(value);
+        return '$column REGEXP ?';
+      case 'gt':
+        _parameters.add(value);
+        return '$column > ?';
+      case 'gte':
+        _parameters.add(value);
+        return '$column >= ?';
+      case 'lt':
+        _parameters.add(value);
+        return '$column < ?';
+      case 'lte':
+        _parameters.add(value);
+        return '$column <= ?';
+      case 'in':
+        if (value is List) {
+          final placeholders = List.filled(value.length, '?').join(', ');
+          _parameters.addAll(value);
+          return '$column IN ($placeholders)';
+        }
+        _parameters.add(value);
+        return '$column IN (?)';
+      case 'isnull':
+        return value == true ? '$column IS NULL' : '$column IS NOT NULL';
+      case 'range':
+        if (value is List && value.length == 2) {
+          _parameters.addAll(value);
+          return '$column BETWEEN ? AND ?';
+        }
+        throw ArgumentError('Range lookup requires a list of two values');
+      case 'year':
+        _parameters.add(value);
+        return 'EXTRACT(YEAR FROM $column) = ?';
+      case 'month':
+        _parameters.add(value);
+        return 'EXTRACT(MONTH FROM $column) = ?';
+      case 'day':
+        _parameters.add(value);
+        return 'EXTRACT(DAY FROM $column) = ?';
+      case 'week_day':
+        _parameters.add(value);
+        return 'EXTRACT(DOW FROM $column) = ?';
+      case 'hour':
+        _parameters.add(value);
+        return 'EXTRACT(HOUR FROM $column) = ?';
+      case 'minute':
+        _parameters.add(value);
+        return 'EXTRACT(MINUTE FROM $column) = ?';
+      case 'second':
+        _parameters.add(value);
+        return 'EXTRACT(SECOND FROM $column) = ?';
+      default:
+        _parameters.add(value);
+        return '$column = ?';
+    }
+  }
+  
+  /// Select related fields for JOIN optimization
+  QueryBuilder selectRelated(List<String> relationships) {
+    for (final relationship in relationships) {
+      final parts = relationship.split('__');
+      final joinAlias = parts.join('_');
+      
+      if (!_joinedTables.containsKey(joinAlias)) {
+        _buildJoinPath(parts);
+      }
+      
+      _select.add('$joinAlias.*');
+    }
+    return this;
+  }
+  
+  /// Prefetch related objects
+  QueryBuilder prefetchRelated(List<String> relationships) {
+    for (final relationship in relationships) {
+      selectRelated([relationship]);
+    }
+    return this;
+  }
+  
+  /// Annotate with aggregations
+  QueryBuilder annotate(Map<String, String> annotations) {
+    for (final entry in annotations.entries) {
+      _select.add('${entry.value} AS ${entry.key}');
+    }
+    return this;
+  }
+  
+  /// Django-style filtering
+  QueryBuilder filter(Map<String, dynamic> filters) {
+    for (final entry in filters.entries) {
+      final parts = entry.key.split('__');
+      final fieldName = parts.first;
+      final operator = parts.length > 1 ? parts.last : 'exact';
+      
+      if (parts.length > 2) {
+        final relationshipPath = parts.take(parts.length - 1).join('__');
+        whereRelated(relationshipPath, operator, entry.value);
+      } else {
+        whereRelated(fieldName, operator, entry.value);
+      }
+    }
+    return this;
+  }
+  
+  /// Django-style exclusion
+  QueryBuilder exclude(Map<String, dynamic> filters) {
+    for (final entry in filters.entries) {
+      final parts = entry.key.split('__');
+      final fieldName = parts.first;
+      final operator = parts.length > 1 ? parts.last : 'exact';
+      
+      if (parts.length > 2) {
+        final relationshipPath = parts.take(parts.length - 1).join('__');
+        final condition = _buildCondition(_buildJoinPath(parts.take(parts.length - 1).toList()), fieldName, operator, entry.value);
+        _where.add('NOT ($condition)');
+      } else {
+        final condition = _buildCondition(_baseTable ?? _from.first, fieldName, operator, entry.value);
+        _where.add('NOT ($condition)');
+      }
+    }
+    return this;
+  }
+  
+  /// Django-style distinct
+  QueryBuilder distinct([List<String>? fields]) {
+    if (fields != null && fields.isNotEmpty) {
+      _select.clear();
+      _select.add('DISTINCT ${fields.join(', ')}');
+    } else {
+      if (_select.isEmpty) {
+        _select.add('DISTINCT *');
+      } else {
+        _select[0] = 'DISTINCT ${_select[0]}';
+      }
+    }
+    return this;
+  }
+  
+  /// Django-style ordering with relationship support
+  QueryBuilder orderByRelated(String relationshipPath, {bool ascending = true}) {
+    final parts = relationshipPath.split('__');
+    final fieldName = parts.last;
+    final relationshipParts = parts.take(parts.length - 1).toList();
+    
+    if (relationshipParts.isNotEmpty) {
+      final joinPath = _buildJoinPath(relationshipParts);
+      _orderBy.add('$joinPath.$fieldName ${ascending ? 'ASC' : 'DESC'}');
+    } else {
+      _orderBy.add('$fieldName ${ascending ? 'ASC' : 'DESC'}');
+    }
+    
+    return this;
+  }
+  
+  /// Django-style values selection
+  QueryBuilder values(List<String> fields) {
+    _select.clear();
+    for (final field in fields) {
+      if (field.contains('__')) {
+        final parts = field.split('__');
+        final fieldName = parts.last;
+        final relationshipParts = parts.take(parts.length - 1).toList();
+        
+        if (relationshipParts.isNotEmpty) {
+          final joinPath = _buildJoinPath(relationshipParts);
+          _select.add('$joinPath.$fieldName');
+        } else {
+          _select.add(fieldName);
+        }
+      } else {
+        _select.add(field);
+      }
+    }
+    return this;
+  }
+  
+  /// Django-style values list
+  QueryBuilder valuesList(List<String> fields, {bool flat = false}) {
+    if (flat && fields.length != 1) {
+      throw ArgumentError('Flat values list requires exactly one field');
+    }
+    return values(fields);
+  }
+  
+  /// Django-style only fields
+  QueryBuilder only(List<String> fields) {
+    return values(fields);
+  }
+  
+  /// Django-style defer fields
+  QueryBuilder defer(List<String> fields) {
+    _select.clear();
+    _select.add('*');
+    return this;
+  }
+  
+  /// Django-style using database
+  QueryBuilder using(String database) {
+    return this;
+  }
+  
+  /// Django-style exists check
+  QueryBuilder exists() {
+    _select.clear();
+    _select.add('1');
+    _limit = 1;
+    return this;
+  }
+  
+  /// Django-style none (empty queryset)
+  QueryBuilder none() {
+    _where.add('1 = 0');
+    return this;
+  }
+  
+  /// Django-style all (no filters)
+  QueryBuilder all() {
+    return this;
+  }
+
   QueryBuilder clone() {
-    final clone = QueryBuilder();
+    final clone = QueryBuilder(_baseTable);
     clone._select.addAll(_select);
     clone._from.addAll(_from);
     clone._joins.addAll(_joins);
@@ -271,6 +573,8 @@ class QueryBuilder {
     clone._offset = _offset;
     clone._rawSql = _rawSql;
     clone._parameters.addAll(_parameters);
+    clone._joinedTables.addAll(_joinedTables);
+    clone._relatedModels.addAll(_relatedModels);
     return clone;
   }
 

@@ -365,6 +365,8 @@ class AdminSite {
     return _registry.values.toList();
   }
 
+  Map<Type, ModelAdmin> get registry => _registry;
+
   // Permission checking
   Future<bool> hasPermission(HttpRequest request) async {
     final user = _getUserFromRequest(request);

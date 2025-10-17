@@ -11,6 +11,7 @@ import 'commands/serve.dart';
 import 'commands/build.dart';
 import 'commands/test.dart' as cli_test;
 import 'commands/doctor.dart';
+import 'commands/admin_generate.dart';
 
 class CliRunner {
   late final CommandManager _commandManager;
@@ -23,14 +24,26 @@ class CliRunner {
   }
 
   void _setupCommands() {
+    // CLI-only commands (for project setup)
     _commandManager.registerAll([
       CreateProjectCommand(),
+      DoctorCommand(),
+    ]);
+    
+    // Import core Django management commands
+    final coreManager = createDefaultCommandManager();
+    for (final command in coreManager.commands) {
+      _commandManager.register(command);
+    }
+    
+    // Additional CLI commands
+    _commandManager.registerAll([
       StartAppCommand(),
       GenerateCommand(),
       ServeCommand(),
       BuildCommand(),
       cli_test.TestCommand(),
-      DoctorCommand(),
+      AdminGenerateCommand(),
     ]);
   }
 
@@ -104,21 +117,21 @@ class CliRunner {
 
   void _showVersion() {
     // Try to get version from SDK installation
-    final dartangoHome = Platform.environment['DARTANGO_HOME'] ?? 
-                        '${Platform.environment['HOME']}/.dartango';
+    final dartangoHome = Platform.environment['DARTANGO_HOME'] ??
+        '${Platform.environment['HOME']}/.dartango';
     final versionFile = File('$dartangoHome/VERSION');
-    
+
     String frameworkVersion = '1.0.0';
     if (versionFile.existsSync()) {
       frameworkVersion = versionFile.readAsStringSync().trim();
     }
-    
+
     print('🐍 Dartango Framework SDK');
     print('');
     print('Framework version: $frameworkVersion');
     print('CLI version: 1.0.0');
     print('Dart SDK: ${Platform.version.split(' ')[0]}');
-    
+
     // Check Flutter version if available
     try {
       final result = Process.runSync('flutter', ['--version']);
@@ -129,7 +142,7 @@ class CliRunner {
     } catch (e) {
       print('Flutter: Not installed');
     }
-    
+
     print('');
     print('Install location: $dartangoHome');
     print('');

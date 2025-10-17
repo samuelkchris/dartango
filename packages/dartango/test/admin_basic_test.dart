@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:shelf/shelf.dart' as shelf;
@@ -8,8 +7,6 @@ import '../lib/src/core/admin/admin_v2.dart';
 import '../lib/src/core/auth/models_v2.dart' as auth;
 import '../lib/src/core/database/connection.dart';
 import '../lib/src/core/http/request.dart';
-import '../lib/src/core/http/response.dart';
-import '../lib/src/core/exceptions/http.dart';
 
 void main() {
   group('Admin Basic Tests', () {

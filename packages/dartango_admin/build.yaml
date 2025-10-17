@@ -1,0 +1,35 @@
+# Code generation configuration for Dartango Admin
+targets:
+  $default:
+    builders:
+      # JSON serialization
+      json_serializable:
+        options:
+          any_map: true
+          checked: true
+          create_to_json: true
+          disallow_unrecognized_keys: false
+          explicit_to_json: true
+          field_rename: snake
+          include_if_null: false
+        generate_for:
+          - lib/src/models/**
+          - lib/src/api/**
+      
+      # Freezed code generation
+      freezed:
+        options:
+          map: true
+          make_collectionsUnmodifiable: true
+        generate_for:
+          - lib/src/models/**
+          - lib/src/blocs/**
+      
+      # Retrofit API client generation
+      retrofit_generator:
+        options:
+          generate_copy_with: true
+        generate_for:
+          - lib/src/api/**
+
+

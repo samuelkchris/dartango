@@ -24,14 +24,14 @@ export 'src/core/i18n/i18n.dart';
 export 'src/core/static_files/static_files.dart';
 
 // Database and ORM
-export 'src/core/database/connection.dart' hide DatabaseBackend;
+export 'src/core/database/connection.dart';
 export 'src/core/database/exceptions.dart' hide ValidationException, MultipleObjectsReturnedException;
-export 'src/core/database/fields.dart' hide CharField, EmailField, IntegerField, BooleanField, DateTimeField, TextField, FloatField;
+export 'src/core/database/fields.dart';
 export 'src/core/database/managers.dart' hide CacheEntry;
-export 'src/core/database/models.dart' hide ModelState;
+export 'src/core/database/models.dart';
 export 'src/core/database/query.dart';
 export 'src/core/database/queryset.dart';
-export 'src/core/database/relationships.dart';
+export 'src/core/database/relationships.dart' hide OneToOneField, ManyToManyField;
 export 'src/core/database/validators.dart';
 export 'src/core/database/migrations.dart' hide ModelState;
 
@@ -52,12 +52,12 @@ export 'src/core/forms/forms.dart';
 export 'src/core/forms/widgets.dart';
 
 // Authentication
-export 'src/core/auth/backends.dart';
+export 'src/core/auth/backends.dart' hide DatabaseBackend;
 export 'src/core/auth/models.dart';
 export 'src/core/auth/migrations.dart';
 
 // Admin interface
-export 'src/core/admin/admin.dart';
+export 'src/core/admin/admin.dart' hide setupDefaultAdmin;
 
 // Cache framework
 export 'src/core/cache/cache.dart';
@@ -91,4 +91,4 @@ export 'src/core/files/upload.dart';
 export 'src/core/email/backend.dart';
 
 // Application framework
-export 'src/dartango_app.dart' hide setupDefaultAdmin, TemplateView, JsonResponse;
+export 'src/dartango_app.dart' hide TemplateView, JsonResponse;
