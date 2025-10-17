@@ -1,20 +1,21 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:args/args.dart';
+
 import '../database/connection.dart';
 import '../database/query.dart';
 import '../management/command.dart';
 import '../cache/cache.dart';
 import 'backends.dart';
-import 'exceptions.dart';
 
 class SessionCleanupCommand extends Command {
   @override
   String get name => 'clearsessions';
-  
+
   @override
   String get description => 'Remove expired sessions from the session store';
-  
+
   @override
   String get help => '''
 Remove expired sessions from the session store.
@@ -30,48 +31,50 @@ Options:
   --dry-run             Show what would be deleted without actually deleting
   --batch-size=<size>   Number of sessions to process in each batch (default: 1000)
   --verbose             Show detailed progress information
-  
+
 Examples:
   dartango clearsessions
   dartango clearsessions --backend=database --verbose
   dartango clearsessions --dry-run --batch-size=500
 ''';
-  
+
   @override
-  void configureParser() {
+  ArgParser get argParser {
+    final parser = ArgParser();
     parser.addOption(
       'backend',
       help: 'Session backend to clean (database, file, cache, all)',
       defaultsTo: 'all',
       allowed: ['database', 'file', 'cache', 'all'],
     );
-    
+
     parser.addFlag(
       'dry-run',
       help: 'Show what would be deleted without actually deleting',
       defaultsTo: false,
     );
-    
+
     parser.addOption(
       'batch-size',
       help: 'Number of sessions to process in each batch',
       defaultsTo: '1000',
     );
-    
+
     parser.addFlag(
       'verbose',
       abbr: 'v',
       help: 'Show detailed progress information',
       defaultsTo: false,
     );
+    return parser;
   }
-  
+
   @override
-  Future<void> run() async {
-    final backend = argResults!['backend'] as String;
-    final dryRun = argResults!['dry-run'] as bool;
-    final batchSize = int.parse(argResults!['batch-size'] as String);
-    final verbose = argResults!['verbose'] as bool;
+  Future<void> execute(ArgResults args) async {
+    final backend = args['backend'] as String;
+    final dryRun = args['dry-run'] as bool;
+    final batchSize = int.parse(args['batch-size'] as String);
+    final verbose = args['verbose'] as bool;
     
     if (verbose) {
       print('Starting session cleanup...');
@@ -124,10 +127,10 @@ Examples:
 class SessionStatsCommand extends Command {
   @override
   String get name => 'sessionstats';
-  
+
   @override
   String get description => 'Display statistics about sessions in the session store';
-  
+
   @override
   String get help => '''
 Display detailed statistics about sessions in the session store.
@@ -142,41 +145,43 @@ Options:
   --backend=<backend>    Specify the session backend to analyze
   --format=<format>      Output format (table, json, csv)
   --detailed             Show detailed breakdown by backend
-  
+
 Examples:
   dartango sessionstats
   dartango sessionstats --backend=database --format=json
   dartango sessionstats --detailed
 ''';
-  
+
   @override
-  void configureParser() {
+  ArgParser get argParser {
+    final parser = ArgParser();
     parser.addOption(
       'backend',
       help: 'Session backend to analyze',
       defaultsTo: 'all',
       allowed: ['database', 'file', 'cache', 'all'],
     );
-    
+
     parser.addOption(
       'format',
       help: 'Output format',
       defaultsTo: 'table',
       allowed: ['table', 'json', 'csv'],
     );
-    
+
     parser.addFlag(
       'detailed',
       help: 'Show detailed breakdown by backend',
       defaultsTo: false,
     );
+    return parser;
   }
-  
+
   @override
-  Future<void> run() async {
-    final backend = argResults!['backend'] as String;
-    final format = argResults!['format'] as String;
-    final detailed = argResults!['detailed'] as bool;
+  Future<void> execute(ArgResults args) async {
+    final backend = args['backend'] as String;
+    final format = args['format'] as String;
+    final detailed = args['detailed'] as bool;
     
     final analyzer = SessionAnalyzer();
     
