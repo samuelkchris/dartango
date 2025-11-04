@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:test/test.dart';
+import 'package:shelf/shelf.dart' as shelf;
 
 import '../../lib/src/core/cache/cache.dart';
 import '../../lib/src/core/middleware/base.dart';
@@ -568,5 +569,3 @@ void main() {
     });
   });
 }
-
-import 'package:shelf/shelf.dart' as shelf;
