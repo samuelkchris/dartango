@@ -10,6 +10,7 @@ import '../../lib/src/core/forms/fields.dart';
 import '../../lib/src/core/cache/cache.dart';
 import '../../lib/src/core/sessions/session.dart';
 import '../../lib/src/core/sessions/backends.dart';
+import '../../lib/src/core/exceptions/http.dart';
 
 class AuthenticationMiddleware extends BaseMiddleware {
   @override
@@ -418,7 +419,7 @@ void main() {
 
       expect(
         () => view.dispatch(request, {'id': '123'}),
-        throwsA(anything),
+        throwsA(isA<MethodNotAllowedException>()),
       );
     });
 
