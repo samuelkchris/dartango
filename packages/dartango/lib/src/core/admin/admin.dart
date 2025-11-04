@@ -6,6 +6,22 @@ import '../forms/forms.dart';
 import '../http/request.dart';
 import '../http/response.dart';
 
+/// Exception thrown when admin field updates fail
+class AdminFieldUpdateException implements Exception {
+  final String message;
+  final Map<String, String> fieldErrors;
+
+  AdminFieldUpdateException(this.message, this.fieldErrors);
+
+  @override
+  String toString() {
+    final errorDetails = fieldErrors.entries
+        .map((e) => '  ${e.key}: ${e.value}')
+        .join('\n');
+    return '$message\n$errorDetails';
+  }
+}
+
 abstract class ModelAdmin<T extends Model> {
   final Type modelType;
   final AdminSite adminSite;
@@ -118,13 +134,22 @@ abstract class ModelAdmin<T extends Model> {
   }
 
   void _updateModelFields(T instance, Map<String, dynamic> data) {
+    final errors = <String, String>{};
+
     for (final entry in data.entries) {
       final fieldName = _snakeToCamel(entry.key);
       try {
         instance.setField(fieldName, entry.value);
       } catch (e) {
-        continue;
+        errors[entry.key] = e.toString();
       }
+    }
+
+    if (errors.isNotEmpty) {
+      throw AdminFieldUpdateException(
+        'Failed to update ${errors.length} field(s): ${errors.keys.join(', ')}',
+        errors,
+      );
     }
   }
 
